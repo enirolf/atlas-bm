@@ -42,7 +42,9 @@ find_package( ${ATLAS_PROJECT} REQUIRED )
 
 ################################### OUR STUFF ##################################
 
-add_executable(gen_ttree compression/gen_ttree.cxx)
+add_executable(bm_compression_factor_ttree compression/bm_compression_factor_ttree.cxx)
+add_executable(plot_compression_factor compression/plot_compression_factor.cxx)
 
-target_link_libraries(gen_ttree PUBLIC ROOT::Tree)
+target_link_libraries(bm_compression_factor_ttree PUBLIC ROOT::Tree)
+target_link_libraries(plot_compression_factor PUBLIC ROOT::ROOTDataFrame)
 
