@@ -1,3 +1,5 @@
+################################# CMAKE SETUP ##################################
+
 cmake_minimum_required(VERSION 3.19.0 FATAL_ERROR)
 
 project(AtlasBM VERSION 0.1.0 LANGUAGES CXX)
@@ -8,6 +10,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_compile_options(-Wall -pthread -Wall -g -O2)
 
 find_package(ROOT 6.24 CONFIG REQUIRED)
+
+################################# ATLAS STUFF ##################################
 
 message(STATUS ${CMAKE_BINARY_DIR})
 
@@ -27,7 +31,7 @@ endforeach()
 set( ATLAS_PROJECT ${_defaultParentProject}
    CACHE STRING "The name of the parent project to build against" )
 
-
+message(STATUS ${ATLAS_PROJECT})
 # Clean up:
 unset( _parentProjectNames )
 unset( _defaultParentProject )
@@ -36,5 +40,9 @@ unset( _defaultParentProject )
 # in the definition of all of the "atlas_" prefixed functions/macros.
 find_package( ${ATLAS_PROJECT} REQUIRED )
 
-add_subdirectory(compression)
+################################### OUR STUFF ##################################
+
+add_executable(gen_ttree compression/gen_ttree.cxx)
+
+target_link_libraries(gen_ttree PUBLIC ROOT::Tree)
 

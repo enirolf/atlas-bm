@@ -1,4 +1,4 @@
-FROM atlas/analysisbase:22.2.97 AS atlas-bm
+FROM atlas/analysisbase:22.2.98 AS atlas-bm
 
 USER atlas
 
