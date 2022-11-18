@@ -1,0 +1,14 @@
+services:
+  atlas-bm:
+    build: .
+    environment:
+      - DISPLAY=$DISPLAY
+      - DAOD_PHYS_FILE=/cvmfs/atlas.cern.ch/repo/tutorials/asg/cern-nov2022/mc16_13TeV.312276.aMcAtNloPy8EG_A14N30NLO_LQd_mu_ld_0p3_beta_0p5_2ndG_M1000.deriv.DAOD_PHYS.e7587_a875_r10201_p5001/DAOD_PHYS.30350968._000001.pool.root.1
+    volumes:
+      - ./src:/home/atlas/src
+      - ./data:/home/atlas/data
+      - /cvmfs:/cvmfs
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    entrypoint: ./setup_docker.sh
+    stdin_open: true
+    tty: true
