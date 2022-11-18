@@ -1,2 +1,7 @@
 build/
 bin/
+data/*
+tmp/
+
+*.sublime-project
+*.sublime-workspace
