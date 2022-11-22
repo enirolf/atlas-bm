@@ -11,6 +11,7 @@
 #include <TSystem.h>
 #include <TTree.h>
 
+#include <filesystem>
 #include <iostream>
 #include <string>
 
@@ -37,10 +38,10 @@ int main(int argc, char **argv) {
   TTree *xAODCollectionTree = inputFile->Get<TTree>("CollectionTree");
 
   Int_t compressionAlgorithms[] = {
-      ROOT::RCompressionSetting::EAlgorithm::kZLIB,
-      ROOT::RCompressionSetting::EAlgorithm::kLZMA,
-      ROOT::RCompressionSetting::EAlgorithm::kLZ4,
-      ROOT::RCompressionSetting::EAlgorithm::kZSTD,
+      ROOT::RCompressionSetting::EAlgorithm::kZLIB, // 1
+      ROOT::RCompressionSetting::EAlgorithm::kLZMA, // 2
+      ROOT::RCompressionSetting::EAlgorithm::kLZ4,  // 4
+      ROOT::RCompressionSetting::EAlgorithm::kZSTD, // 5
   };
 
   TTree compressionDataTree =
@@ -55,8 +56,9 @@ int main(int argc, char **argv) {
   compressionDataTree.Branch("compLvl", &compLvl);
   compressionDataTree.Branch("compFactor", &compFactor);
 
-  const std::string tmpOutputDir = gSystem->TempDirectory();
-  gSystem->MakeDirectory(tmpOutputDir.c_str());
+  const std::string outputDir = "./output/";
+  std::filesystem::create_directory(outputDir);
+
   std::string outputPath;
   TFile *outputFile;
 
@@ -64,11 +66,12 @@ int main(int argc, char **argv) {
     for (compLvl = 1; compLvl < 10; ++compLvl) {
       compAlg = alg;
       compSetting = compAlg * 100 + compLvl;
-      outputPath = tmpOutputDir + "/collection_ttree~" +
+      outputPath = outputDir + "/collection_ttree~" +
                    std::to_string(compSetting) + ".root";
+
       outputFile = TFile::Open(outputPath.c_str(), "RECREATE", "CollectionTree",
                                compSetting);
-      outputFile->Delete("T*;*");
+
       outputFile->WriteObject(xAODCollectionTree, "CollectionTree");
 
       compFactor = outputFile->GetCompressionFactor();
@@ -83,8 +86,9 @@ int main(int argc, char **argv) {
     }
   }
 
+  std::filesystem::create_directory("./data/");
   TFile *compressionDataFile =
-      TFile::Open("data/ttree_compression_factor.root", "RECREATE");
+      TFile::Open("./data/ttree_compression_factor.root", "RECREATE");
   compressionDataFile->WriteObject(&compressionDataTree, "compressionDataTree");
 
   return 0;

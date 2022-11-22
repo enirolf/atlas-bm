@@ -7,8 +7,9 @@ services:
     volumes:
       - ./src:/home/atlas/src
       - ./data:/home/atlas/data
+      - ./output:/home/atlas/output
       - /cvmfs:/cvmfs
       - /tmp/.X11-unix:/tmp/.X11-unix
     entrypoint: ./setup_docker.sh
-    stdin_open: true
-    tty: true
+
+

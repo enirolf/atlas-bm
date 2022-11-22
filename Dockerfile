@@ -1,15 +1,11 @@
 FROM atlas/analysisbase:22.2.98 AS atlas-bm
 
-USER atlas
-
 WORKDIR /home/atlas
-
-RUN mkdir ./build
 
 COPY ./setup_docker.sh .
 COPY ./src ./src
 COPY ./data ./data
+COPY ./output ./output
 
-RUN sudo chown -R atlas ./src
-RUN sudo chown -R atlas ./data
+USER atlas
 
