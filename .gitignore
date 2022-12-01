@@ -1,8 +1,8 @@
 build/
 bin/
-data/*
-output/*
+data/
 tmp/
+logs/
 
 *.sublime-project
 *.sublime-workspace

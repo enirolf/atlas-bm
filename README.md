@@ -2,37 +2,28 @@
 
 Collection of benchmarks for ROOT's `TTree` and `RNTuple` in ATLAS `DAOD_PHYS/LITE`.
 
-## Setup
+## Compression
 
-### Docker
-Make sure to have Docker (and Docker Compose) installed.
-Run:
-```sh
-docker compose build
-```
-to build the image.
+### Generating DAODs with different compression settings
 
-To run an interactive shell in the container, run
-```sh
-docker compose run -it --rm atlas-bm /bin/sh
-```
+This must be done in an ATLAS Analysis release, e.g. on lxplus or with Docker.
 
-To directly execute one of the benchmarks and collect its results instead, run
-```sh
-docker compose run --rm atlas-bm <EXECUTABLE> <ARGS>
-```
+N.B. The `AnalysisBase` release doesn't have access to all required dictionaries and therefore won't work! Use `AthAnalysis`.
 
-For example:
+To use docker, run the following command to mount the current directory, enable X11 forwarding and open an interactive shell:
 ```sh
-docker compose run --rm atlas-bm bin/bm_compression_factor_ttree $DAOD_PHYS_FILE
+docker run --net host -i -t -v $(pwd):/workdir -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY atlas/athanalysis
 ```
-(make sure the `$DAOD_PHYS_FILE` env variable is set on the *host*!)
+Make sure to run `source /release_setup.sh` each time you start the container.
 
-### Local
-Run the following commands in the root of this repository (i.e. where this `README` lives):
+To get read/write access to the `data` directory from within the container, run
 ```sh
-cmake -S src/ -B build/
-cmake --build build/
+sudo chown -R atlas:atlas data
 ```
-The executable files can be found in `bin/`.
-N.B. the benchmarks themselves are not compiled unless `$AtlasProject` is set.
+in the container (change it back to the host user when you stop working in the container).
+
+To create the differently compressed versions of a given (D)AOD, run
+```sh
+cd scripts
+./recompress_daod <DAOD_PATH>
+```

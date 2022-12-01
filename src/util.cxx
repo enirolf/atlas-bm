@@ -2,11 +2,45 @@
  * Author: Florine de Geus (fdegeus@cern.ch)
  */
 
+#include <algorithm>
+
 #include "util.hxx"
 
-void setPlotStyle(TGraph *plot) {
-  plot->Sort();
-  plot->SetFillColor(9);
-  plot->GetXaxis()->CenterTitle();
-  plot->GetYaxis()->CenterTitle();
+std::string getCompAlgName(Int_t alg) {
+  switch (alg) {
+  case ROOT::RCompressionSetting::EAlgorithm::kZLIB:
+    return "ZLIB";
+    break;
+  case ROOT::RCompressionSetting::EAlgorithm::kLZMA:
+    return "LZMA";
+    break;
+  case ROOT::RCompressionSetting::EAlgorithm::kLZ4:
+    return "LZ4";
+    break;
+  case ROOT::RCompressionSetting::EAlgorithm::kZSTD:
+    return "ZSTD";
+    break;
+  default:
+    return "UNKNOWN";
+  }
+}
+
+void setGraphStyle(TGraph *graph) {
+  graph->Sort();
+  graph->SetFillColor(9);
+  graph->GetXaxis()->CenterTitle();
+  graph->GetYaxis()->CenterTitle();
+  // graph->GetXaxis()->LabelsOption("h");
+}
+
+void mkCompAlgoMap(std::map<Int_t, std::string> *algMap) {
+  (*algMap)[0] = "uncompressed";
+  (*algMap)[105] = "zlib";
+  (*algMap)[207] = "lzma";
+  (*algMap)[404] = "lz4";
+  (*algMap)[505] = "zstd";
+}
+
+void removeSpaces(std::string *str) {
+  str->erase(remove_if(str->begin(), str->end(), isspace), str->end());
 }
