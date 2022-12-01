@@ -1,5 +1,6 @@
 void plot_ttree_file_compression(
-    TString resultsPath = "./data/results/results_file_compression~ttree.txt") {
+    TString resultsPath =
+        "./results/compression/results_file_compression~ttree.txt") {
 
   std::ifstream dataFile(resultsPath.Data());
 
