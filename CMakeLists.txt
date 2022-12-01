@@ -9,16 +9,16 @@ add_compile_options(-Wall -pthread -Wall -g -O2)
 
 find_package(ROOT CONFIG REQUIRED)
 
-cmake_path(SET BIN_DIR NORMALIZE "${CMAKE_SOURCE_DIR}/../bin")
+cmake_path(SET BIN_DIR NORMALIZE "${CMAKE_SOURCE_DIR}/bin")
 file(MAKE_DIRECTORY ${BIN_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${BIN_DIR})
 
-add_library(util util.cxx util.hxx)
+add_library(util benchmarks/util.cxx benchmarks/util.hxx)
 target_link_libraries(util PUBLIC ROOT::ROOTDataFrame)
 
-add_executable(bm_compression_factor compression/bm_compression_factor.cxx)
-target_link_libraries(bm_compression_factor PUBLIC ROOT::Tree ROOT::Gui util)
-target_include_directories(bm_compression_factor PUBLIC
+add_executable(bm_compression benchmarks/bm_compression.cxx)
+target_link_libraries(bm_compression PUBLIC ROOT::Tree ROOT::Gui util)
+target_include_directories(bm_compression PUBLIC
                           "${PROJECT_BINARY_DIR}"
                           "${PROJECT_SOURCE_DIR}"
                         )

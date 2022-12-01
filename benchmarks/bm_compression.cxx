@@ -35,10 +35,11 @@
 namespace fs = std::filesystem;
 
 int ttreeTypeCompression(const fs::path treeDir = "./data/compressed_ttrees/",
-                         const fs::path resultsDir = "./data/results/") {
+                         const fs::path resultsDir = "./results/compression/") {
   TFile *treeFile;
   TTree *collectionTree;
 
+  fs::create_directories(resultsDir);
   fs::path resultsPath;
   std::fstream resultsFile;
 
@@ -86,10 +87,11 @@ int ttreeTypeCompression(const fs::path treeDir = "./data/compressed_ttrees/",
 }
 
 int ttreeFileCompression(const fs::path treeDir = "./data/compressed_ttrees/",
-                         const fs::path resultsDir = "./data/results/") {
+                         const fs::path resultsDir = "./results/compression/") {
   TFile *treeFile;
   TTree *collectionTree;
 
+  fs::create_directories(resultsDir);
   fs::path resultsPath = resultsDir / "results_file_compression~ttree.txt";
   std::fstream resultsFile;
   resultsFile.open(resultsPath, std::ios_base::out);
