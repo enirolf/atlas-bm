@@ -48,6 +48,7 @@ int ttreeTypeCompression(const fs::path treeDir = "./data/compressed_ttrees/",
 
   int compressionSetting;
   std::string className;
+  std::string branchName;
 
   for (auto &f : fs::directory_iterator(treeDir)) {
     std::string filePath = f.path();
@@ -58,9 +59,8 @@ int ttreeTypeCompression(const fs::path treeDir = "./data/compressed_ttrees/",
     compressionSetting = treeFile->GetCompressionSettings();
     std::cout << compressionSetting << " "
               << compressionAlgoMap[compressionSetting] << std::endl;
-    resultsPath =
-        resultsDir / Form("results_type_compression~ttree-%s.txt",
-                          compressionAlgoMap[compressionSetting].c_str());
+    resultsPath = resultsDir / Form("results_type_compression.txt~TTree-%d",
+                                    compressionSetting);
 
     resultsFile.open(resultsPath, std::ios_base::out);
     if (!resultsFile.is_open()) {
@@ -76,7 +76,11 @@ int ttreeTypeCompression(const fs::path treeDir = "./data/compressed_ttrees/",
 
       className = br->GetClassName();
       removeSpaces(&className);
-      resultsFile << className << " " << br->GetTotBytes() << "\n";
+
+      branchName = br->GetFullName();
+
+      resultsFile << className << " " << branchName << " " << br->GetTotBytes()
+                  << "\n";
     }
 
     resultsFile << std::endl;
@@ -92,7 +96,7 @@ int ttreeFileCompression(const fs::path treeDir = "./data/compressed_ttrees/",
   TTree *collectionTree;
 
   fs::create_directories(resultsDir);
-  fs::path resultsPath = resultsDir / "results_file_compression~ttree.txt";
+  fs::path resultsPath = resultsDir / "results_file_compression.txt~TTree";
   std::fstream resultsFile;
   resultsFile.open(resultsPath, std::ios_base::out);
 
@@ -107,17 +111,20 @@ int ttreeFileCompression(const fs::path treeDir = "./data/compressed_ttrees/",
     treeFile = TFile::Open(filePath.c_str(), "READ");
     collectionTree = treeFile->Get<TTree>("CollectionTree");
 
-    std::cout << "File: " << filePath << "\n"
-              << "Compression algorithm: "
-              << treeFile->GetCompressionAlgorithm() << "\n"
-              << "Compression level: " << treeFile->GetCompressionLevel()
-              << "\n"
-              << "Compression factor: " << treeFile->GetCompressionFactor()
-              << "\n"
-              << "File size " << collectionTree->GetZipBytes() << "\n\n";
+    int zipBytes = collectionTree->GetZipBytes();
+    int nEvents = collectionTree->GetEntries();
 
-    resultsFile << treeFile->GetCompressionSettings() << " "
-                << collectionTree->GetZipBytes() << "\n";
+    std::cout << "File: " << filePath << "\n"
+              << "Compression algorithm: \t"
+              << treeFile->GetCompressionAlgorithm() << "\n"
+              << "Compression level: \t" << treeFile->GetCompressionLevel()
+              << "\n"
+              << "# Events: \t\t" << nEvents << "\n"
+              << "Total file size: \t" << zipBytes << "\n"
+              << "Size per event: \t" << zipBytes / nEvents << "\n\n";
+
+    resultsFile << treeFile->GetCompressionSettings() << " " << nEvents << " "
+                << zipBytes << "\n";
   }
 
   resultsFile << std::endl;

@@ -25,14 +25,6 @@ std::string getCompAlgName(Int_t alg) {
   }
 }
 
-void setGraphStyle(TGraph *graph) {
-  graph->Sort();
-  graph->SetFillColor(9);
-  graph->GetXaxis()->CenterTitle();
-  graph->GetYaxis()->CenterTitle();
-  // graph->GetXaxis()->LabelsOption("h");
-}
-
 void mkCompAlgoMap(std::map<Int_t, std::string> *algMap) {
   (*algMap)[0] = "uncompressed";
   (*algMap)[105] = "zlib";

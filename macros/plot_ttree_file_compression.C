@@ -1,22 +1,18 @@
-void plot_ttree_file_compression(
+#include "compression_util.C"
+
+int plot_ttree_file_compression(
     TString resultsPath =
-        "./results/compression/results_file_compression~ttree.txt") {
+        "./results/compression/results_file_compression.txt~ttree") {
 
-  std::ifstream dataFile(resultsPath.Data());
+  std::ifstream resultsFile(resultsPath.Data());
 
-  vector<TString> compressionSettings;
   vector<float> treeSizes;
 
-  TString alg;
+  CompressionSetting setting;
   float size;
 
   auto canvas = new TCanvas();
   canvas->SetGrid();
-  canvas->SetTopMargin(0.1);
-  canvas->SetBottomMargin(0.1);
-  canvas->SetLeftMargin(0.1);
-  canvas->SetRightMargin(0.1);
-  canvas->cd();
 
   TGraph *graph = new TGraph();
 
@@ -24,10 +20,9 @@ void plot_ttree_file_compression(
   float maxSize = 0.;
   cout << "Setting\tFile size"
        << "\n---------\t---------" << endl;
-  while (dataFile >> alg >> size) {
-    float gbSize = size / 1024 / 1024;
-    cout << alg << "\t\t" << gbSize << endl;
-    compressionSettings.push_back(alg);
+  while (resultsFile >> setting >> size) {
+    float gbSize = size / (1024 * 1024);
+    cout << setting << "\t\t" << gbSize << endl;
     treeSizes.push_back(gbSize);
     graph->SetPoint(step, step + 0.5, gbSize);
 
@@ -35,12 +30,14 @@ void plot_ttree_file_compression(
     ++step;
   }
 
-  TH1F *helper = new TH1F("", "", compressionSettings.size(), 0,
-                          compressionSettings.size());
+  resultsFile.close();
+
+  TH1F *helper = new TH1F("", "", std::size(compressionSettings), 0,
+                          std::size(compressionSettings));
   graph->SetHistogram(helper);
 
-  for (int i = 0; i < compressionSettings.size(); ++i) {
-    helper->GetXaxis()->SetBinLabel(i + 1, compressionSettings[i]);
+  for (int i = 0; i < std::size(compressionSettings); ++i) {
+    helper->GetXaxis()->SetBinLabel(i + 1, Form("%d", compressionSettings[i]));
   }
   helper->GetXaxis()->SetTitle("Compression setting");
   helper->GetYaxis()->SetTitle("CollectionTree size [GB]");
@@ -53,4 +50,6 @@ void plot_ttree_file_compression(
   graph->SetMaximum(maxSize * 1.05);
 
   graph->Draw("AB");
+
+  return 0;
 }
