@@ -2,6 +2,7 @@ build/
 bin/
 data/
 results/
+figures/
 tmp/
 logs/
 

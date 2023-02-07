@@ -19,7 +19,7 @@ cmake --build .
 ```
 or alternatively by creating a separate build directory:
 ```sh
-mkdir build && cd build
+mkdir build
 cmake -S . -B build
 cmake --build build
 ```

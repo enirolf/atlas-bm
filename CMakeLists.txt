@@ -13,12 +13,12 @@ cmake_path(SET BIN_DIR NORMALIZE "${CMAKE_SOURCE_DIR}/bin")
 file(MAKE_DIRECTORY ${BIN_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${BIN_DIR})
 
-add_library(util benchmarks/util.cxx benchmarks/util.hxx)
-target_link_libraries(util PUBLIC ROOT::ROOTDataFrame)
+add_library(size_util util/size_util.cxx util/size_util.hxx)
+target_link_libraries(size_util PUBLIC ROOT::Graf)
 
-add_executable(bm_compression benchmarks/bm_compression.cxx)
-target_link_libraries(bm_compression PUBLIC ROOT::Tree ROOT::Gui util)
-target_include_directories(bm_compression PUBLIC
+add_executable(bm_size benchmarks/bm_size.cxx)
+target_link_libraries(bm_size PUBLIC size_util ROOT::Tree ROOT::ROOTNTuple ROOT::ROOTNTupleUtil)
+target_include_directories(bm_size PUBLIC
                           "${PROJECT_BINARY_DIR}"
                           "${PROJECT_SOURCE_DIR}"
                         )
