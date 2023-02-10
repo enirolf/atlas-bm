@@ -25,23 +25,16 @@ struct EntryStats
 std::vector<EntryStats> ttree_branch_stats(const std::string branchName = "MuonsAuxDyn.eta", bool makeHisto = false) {
     std::vector<EntryStats> stats;
 
-    auto legend = new TLegend();
-
-    if (makeHisto) {
-        auto canvas = new TCanvas("canvas_ttree", branchName.c_str());
-    }
-
     for (int i = 0; i < sizeof(compressionSettings) / sizeof(int); ++i) {
         std::string treePath = treeBasePath + "~" + std::to_string(compressionSettings[i]);
         ROOT::RDataFrame rdf("CollectionTree", treePath);
 
         if (makeHisto) {
-            auto hist = rdf.Histo1D({Form("hist_%d", compressionSettings[i]), "hist", 64, -3.5, 3.5}, branchName);
+            auto hist = rdf.Histo1D({Form("hist_%d", compressionSettings[i]), "TTree", 64, -4., 4.}, branchName);
             hist->SetLineWidth(2);
             hist->SetLineColor(i + 2);
             hist->SetLineStyle(i + 1);
             hist->DrawClone("SAME");
-            legend->AddEntry(Form("hist_%d", compressionSettings[i]), Form("%d", compressionSettings[i]), "l");
         }
 
         stats.emplace_back(EntryStats(treePath, branchName, *rdf.Min(branchName), *rdf.Max(branchName), *rdf.Mean(branchName), *rdf.StdDev(branchName)));
@@ -53,31 +46,19 @@ std::vector<EntryStats> ttree_branch_stats(const std::string branchName = "Muons
 std::vector<EntryStats> rntuple_field_stats(const std::string fieldName = "MuonsAuxDyn:eta", bool makeHisto = false) {
     std::vector<EntryStats> stats;
 
-    auto legend = new TLegend();
-
-    if (makeHisto) {
-        auto canvas = new TCanvas("canvas_rntuple", fieldName.c_str());
-    }
-
-
     for (int i = 0; i < sizeof(compressionSettings) / sizeof(int); ++i) {
         std::string ntuplePath = ntupleBasePath + "~" + std::to_string(compressionSettings[i]);
         ROOT::RDataFrame rdf = ROOT::RDF::Experimental::FromRNTuple("CollectionNTuple", ntuplePath);
 
         if (makeHisto) {
-            auto hist = rdf.Histo1D({Form("hist_%d", compressionSettings[i]), "hist", 64, -3.5, 3.5}, fieldName);
+            auto hist = rdf.Histo1D({Form("hist_%d", compressionSettings[i]), "RNTuple", 64, -4., 4.}, fieldName);
             hist->SetLineWidth(2);
             hist->SetLineColor(i + 2);
             hist->SetLineStyle(i + 1);
             hist->DrawClone("SAME");
-            legend->AddEntry(Form("hist_%d", compressionSettings[i]), Form("%d", compressionSettings[i]), "l");
         }
 
         stats.emplace_back(EntryStats(ntuplePath, fieldName, *rdf.Min(fieldName), *rdf.Max(fieldName), *rdf.Mean(fieldName), *rdf.StdDev(fieldName)));
-    }
-
-    if (makeHisto) {
-        legend->Draw();
     }
 
     return stats;
@@ -164,13 +145,25 @@ void validate_files() {
 
     check_branch_field_correspondence();
 
-    auto allStats = ttree_branch_stats("MuonsAuxDyn.eta", true);
+    std::vector<std::pair<std::string, std::string>> validationCols = {
+        {"MuonsAuxDyn.eta", "MuonsAuxDyn:eta"},
+        {"DiTauJetsAuxDyn.phi", "DiTauJetsAuxDyn:phi"},
+        {"egammaClustersAuxDyn.calM", "egammaClustersAuxDyn:calM"}
+    };
 
-    for (const auto stats : rntuple_field_stats("MuonsAuxDyn:eta", true)) {
-        allStats.emplace_back(stats);
+    for (const auto col : validationCols) {
+        auto canvas = new TCanvas(col.first.c_str(), col.first.c_str(), 1200, 600);
+        canvas->Divide(2, 1);
+        canvas->cd(1);
+        auto allStats = ttree_branch_stats(col.first, true);
+
+        canvas->cd(2);
+        for (const auto stats : rntuple_field_stats(col.second, true)) {
+            allStats.emplace_back(stats);
+        }
+
+        compare_stats(allStats);
     }
-
-    compare_stats(allStats);
 }
 
 // std::cout << "Min  = " << rdf.Min(fieldName).GetValue()
