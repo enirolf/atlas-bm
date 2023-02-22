@@ -12,7 +12,7 @@
 using ROOT::Experimental::RNTuple;
 using ROOT::Experimental::RNTupleInspector;
 
-const int kCompressionSettings[] = {0, 207, 404, 505};
+const int kCompressionSettings[] = {0, 505};
 
 std::unique_ptr<SizeStats>
 bmNTupleSize(const std::string ntuplePath,
@@ -28,35 +28,56 @@ bmNTupleSize(const std::string ntuplePath,
 
 std::unique_ptr<SizeStats>
 bmTreeSize(const std::string treePath,
+           const bool optimizedBaskets = false,
            const std::string treeName = "CollectionTree") {
-  auto file = std::unique_ptr<TFile>(TFile::Open(treePath.c_str()));
+  std::unique_ptr<TFile> file;
+
+  if (optimizedBaskets) {
+    const char *treeOptPath = Form("%s_OPT", treePath.c_str());
+    file = std::unique_ptr<TFile>(TFile::Open(treeOptPath));
+  } else {
+    file = std::unique_ptr<TFile>(TFile::Open(treePath.c_str()));
+  }
+
   auto tree = file->Get<TTree>(treeName.c_str());
 
-  return std::make_unique<SizeStats>("TTree", tree->GetEntries(),
+  const std::string statName = optimizedBaskets ? "TTreeOpt" : "TTree";
+
+  return std::make_unique<SizeStats>(statName, tree->GetEntries(),
                                      tree->GetZipBytes(), tree->GetTotBytes(),
                                      file->GetCompressionSettings());
 }
 
 int main() {
-  // Suppress warnings
+  // Suppress (irrelevant) warnings
   gErrorIgnoreLevel = kError;
 
+  int c;
+
+  // while (c = getopt)
+
   std::fstream resultsFile;
-  resultsFile.open("results/size_mc16.txt", std::ios_base::out);
+  resultsFile.open("results/size_data.txt", std::ios_base::out);
 
   for (const auto setting : kCompressionSettings) {
     std::cout << "### Compression = " << setting << " ###" << std::endl;
     const std::string treePath =
-        "data/mc16_DAOD_PHYS.ttree.root~" + std::to_string(setting);
+        "data/daod_phys_benchmark_files/data/DAOD_PHYS_DATA.ttree.root~" + std::to_string(setting);
     auto treeStats = bmTreeSize(treePath);
     treeStats->print();
     treeStats->writeToFile(resultsFile);
 
-    // const std::string ntuplePath =
-    //     "data/PHYS_FULL.rntuple.root~" + std::to_string(setting);
-    // auto ntupleStats = bmNTupleSize(ntuplePath);
-    // ntupleStats->print();
-    // ntupleStats->writeToFile(resultsFile);
+    const std::string treeOptPath =
+        "data/daod_phys_benchmark_files/data/DAOD_PHYS_DATA.ttree.root~" + std::to_string(setting);
+    auto treeOptStats = bmTreeSize(treePath, true);
+    treeOptStats->print();
+    treeOptStats->writeToFile(resultsFile);
+
+    const std::string ntuplePath =
+        "data/daod_phys_benchmark_files/data/DAOD_PHYS_DATA.rntuple.root~" + std::to_string(setting);
+    auto ntupleStats = bmNTupleSize(ntuplePath);
+    ntupleStats->print();
+    ntupleStats->writeToFile(resultsFile);
   }
 
   resultsFile.close();

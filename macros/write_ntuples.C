@@ -5,9 +5,9 @@
 
 using ROOT::Experimental::RNTupleImporter;
 
-const std::string sourceBasePath = "data/mc20_DAOD_PHYS.ttree.root";
-const std::string targetBasePath = "data/mc20_DAOD_PHYS.rntuple.root";
-const int compressionSettings[] = {0, 207, 404, 505};
+const std::string sourceBasePath = "data/DAOD_PHYS_DATA.ttree.root";
+const std::string targetBasePath = "data/DAOD_PHYS_DATA.rntuple.root";
+const int compressionSettings[] = {0, 505};
 
 void write_ntuples() {
   gErrorIgnoreLevel = kError;

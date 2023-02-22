@@ -16,9 +16,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${BIN_DIR})
 add_library(size_util util/size_util.cxx util/size_util.hxx)
 target_link_libraries(size_util PUBLIC ROOT::Graf)
 
-add_executable(bm_size benchmarks/bm_size.cxx)
-target_link_libraries(bm_size PUBLIC size_util ROOT::Tree ROOT::ROOTNTuple ROOT::ROOTNTupleUtil)
-target_include_directories(bm_size PUBLIC
+add_executable(bm_ttree_vs_rntuple_size benchmarks/bm_ttree_vs_rntuple_size.cxx)
+target_link_libraries(bm_ttree_vs_rntuple_size PUBLIC size_util ROOT::Tree ROOT::ROOTNTuple ROOT::ROOTNTupleUtil)
+target_include_directories(bm_ttree_vs_rntuple_size PUBLIC
                           "${PROJECT_BINARY_DIR}"
                           "${PROJECT_SOURCE_DIR}"
                         )
