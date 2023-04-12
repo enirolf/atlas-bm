@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <regex>
 
 #include <TFile.h>
 #include <TTree.h>
@@ -10,9 +11,9 @@
 #include <ROOT/RNTupleModel.hxx>
 #include <ROOT/RNTuple.hxx>
 
-const std::string treeBasePath = "data/mc20_DAOD_PHYS.ttree.root";
-const std::string ntupleBasePath = "data/mc20_DAOD_PHYS.rntuple.root";
-const int compressionSettings[] = {0, 207, 404, 505};
+const std::string treePath = "data/DAOD_PHYS.art.pool.root";
+const std::string ntuplePath = "data/DAOD_PHYS.art.pool.rntuple";
+const int compressionSettings[] = {505};
 
 struct EntryStats
 {
@@ -22,44 +23,65 @@ struct EntryStats
     double min, max, mean, stdev;
 };
 
-std::vector<EntryStats> ttree_branch_stats(const std::string branchName = "MuonsAuxDyn.eta", bool makeHisto = false) {
+bool replace_substr(std::string& str, std::string_view from, std::string_view to) {
+    size_t start_pos = str.find(from);
+    if(start_pos == std::string::npos)
+        return false;
+    str.replace(start_pos, from.length(), to);
+    return true;
+}
+
+std::string get_field_name(std::string_view branchName) {
+    std::string fieldName = std::string(branchName);
+    replace_substr(fieldName, "Dyn", ":");
+    std::replace(fieldName.begin(), fieldName.end(), '.', ':');
+
+    return fieldName;
+}
+
+std::string get_branch_name(std::string_view fieldName) {
+    std::string branchName = std::string(fieldName);
+    branchName.erase(branchName.find_last_not_of(".") + 1, std::string::npos);
+    replace_substr(branchName, "Aux::", "AuxDyn.");
+    replace_substr(branchName, "Aux:", "Aux.");
+    std::replace(branchName.begin(), branchName.end(), ':', '.');
+
+    return branchName;
+}
+
+std::vector<EntryStats> ttree_branch_stats(const std::string branchName = "PhotonsAuxDyn.eta", bool makeHisto = false) {
     std::vector<EntryStats> stats;
 
-    for (int i = 0; i < sizeof(compressionSettings) / sizeof(int); ++i) {
-        std::string treePath = treeBasePath + "~" + std::to_string(compressionSettings[i]);
-        ROOT::RDataFrame rdf("CollectionTree", treePath);
+    ROOT::RDataFrame rdf("CollectionTree", treePath);
 
-        if (makeHisto) {
-            auto hist = rdf.Histo1D({Form("hist_%d", compressionSettings[i]), "TTree", 64, -4., 4.}, branchName);
-            hist->SetLineWidth(2);
-            hist->SetLineColor(i + 2);
-            hist->SetLineStyle(i + 1);
-            hist->DrawClone("SAME");
-        }
-
-        stats.emplace_back(EntryStats(treePath, branchName, *rdf.Min(branchName), *rdf.Max(branchName), *rdf.Mean(branchName), *rdf.StdDev(branchName)));
+    if (makeHisto) {
+        auto hist = rdf.Histo1D({"hist_ttree", "TTree", 64, -4., 4.}, branchName);
+        hist->SetLineWidth(2);
+        hist->SetLineColor(2);
+        hist->SetLineStyle(1);
+        hist->DrawClone("SAME");
     }
+
+    stats.emplace_back(EntryStats(treePath, branchName, *rdf.Min(branchName), *rdf.Max(branchName), *rdf.Mean(branchName), *rdf.StdDev(branchName)));
+
 
     return stats;
 }
 
-std::vector<EntryStats> rntuple_field_stats(const std::string fieldName = "MuonsAuxDyn:eta", bool makeHisto = false) {
+std::vector<EntryStats> rntuple_field_stats(const std::string fieldName = "PhotonsAux::eta", bool makeHisto = false) {
     std::vector<EntryStats> stats;
 
-    for (int i = 0; i < sizeof(compressionSettings) / sizeof(int); ++i) {
-        std::string ntuplePath = ntupleBasePath + "~" + std::to_string(compressionSettings[i]);
-        ROOT::RDataFrame rdf = ROOT::RDF::Experimental::FromRNTuple("CollectionNTuple", ntuplePath);
+    ROOT::RDataFrame rdf = ROOT::RDF::Experimental::FromRNTuple("RNT:CollectionTree", ntuplePath);
 
-        if (makeHisto) {
-            auto hist = rdf.Histo1D({Form("hist_%d", compressionSettings[i]), "RNTuple", 64, -4., 4.}, fieldName);
-            hist->SetLineWidth(2);
-            hist->SetLineColor(i + 2);
-            hist->SetLineStyle(i + 1);
-            hist->DrawClone("SAME");
-        }
-
-        stats.emplace_back(EntryStats(ntuplePath, fieldName, *rdf.Min(fieldName), *rdf.Max(fieldName), *rdf.Mean(fieldName), *rdf.StdDev(fieldName)));
+    if (makeHisto) {
+        auto hist = rdf.Histo1D({"hist_rntuple", "RNTuple", 64, -4., 4.}, fieldName);
+        hist->SetLineWidth(2);
+        hist->SetLineColor(2);
+        hist->SetLineStyle(1);
+        hist->DrawClone("SAME");
     }
+
+    stats.emplace_back(EntryStats(ntuplePath, fieldName, *rdf.Min(fieldName), *rdf.Max(fieldName), *rdf.Mean(fieldName), *rdf.StdDev(fieldName)));
 
     return stats;
 }
@@ -102,22 +124,16 @@ bool check_branch_field_correspondence() {
     bool correspondence = true;
 
     // Assume the same outcome holds for other compression settings.
-    std::string treePath = treeBasePath + "~0";
     auto treeFile = TFile::Open(treePath.c_str());
     auto tree = treeFile->Get<TTree>("CollectionTree");
 
-    std::string ntuplePath = ntupleBasePath + "~0";
-    auto ntupleReader = ROOT::Experimental::RNTupleReader::Open("CollectionNTuple", ntuplePath);
+    auto ntupleReader = ROOT::Experimental::RNTupleReader::Open("RNT:CollectionTree", ntuplePath);
     auto ntupleDescriptor = ntupleReader->GetDescriptor();
 
 
     for (const auto branch : TRangeDynCast<TBranch>(tree->GetListOfBranches())) {
         if (!branch) continue;
-        std::string fieldName = branch->GetName();
-
-        fieldName.erase(fieldName.find_last_not_of(".") + 1, std::string::npos);
-        std::replace(fieldName.begin(), fieldName.end(), '.', ':');
-
+        std::string fieldName = get_field_name(branch->GetName());
 
         if (ntupleDescriptor->FindFieldId(fieldName) == -1) {
             std::cout << "unable to find field " << fieldName << " corresponding to branch " << branch->GetName() << std::endl;
@@ -126,9 +142,7 @@ bool check_branch_field_correspondence() {
     }
 
     for (const auto& field : ntupleDescriptor->GetTopLevelFields()) {
-        std::string branchName = field.GetFieldName();
-
-        std::replace(branchName.begin(), branchName.end(), ':', '.');
+        std::string branchName = get_branch_name(field.GetFieldName());
 
         if (!(tree->FindBranch(branchName.c_str()) || tree->FindBranch((branchName + ".").c_str()))) {
             std::cout << "unable to find branch " << branchName << " corresponding to field " << field.GetFieldName() << std::endl;
@@ -141,29 +155,31 @@ bool check_branch_field_correspondence() {
 
 
 void validate_files() {
-    gInterpreter->ProcessLine("#include \"xAODMissingET/versions/MissingETCompositionBase.h\"");
+    gInterpreter->ProcessLine("#include <xAODMissingET/versions/MissingETCompositionBase.h>");
+    gInterpreter->ProcessLine("#include <xAODMissingET/versions/MissingETBase.h>");
+    gInterpreter->ProcessLine("#include <CxxUtils/sgkey_t.h>");
 
     check_branch_field_correspondence();
 
-    std::vector<std::pair<std::string, std::string>> validationCols = {
-        {"MuonsAuxDyn.eta", "MuonsAuxDyn:eta"},
-        {"DiTauJetsAuxDyn.phi", "DiTauJetsAuxDyn:phi"},
-        {"egammaClustersAuxDyn.calM", "egammaClustersAuxDyn:calM"}
-    };
+    // std::vector<std::pair<std::string, std::string>> validationCols = {
+    //     {"PhotonsAuxDyn.eta", "PhotonsAux::eta"},
+    //     {"DiTauJetsAuxDyn.phi", "DiTauJetsAux::phi"},
+    //     {"egammaClustersAuxDyn.calM", "egammaClustersAux::calM"}
+    // };
 
-    for (const auto col : validationCols) {
-        auto canvas = new TCanvas(col.first.c_str(), col.first.c_str(), 1200, 600);
-        canvas->Divide(2, 1);
-        canvas->cd(1);
-        auto allStats = ttree_branch_stats(col.first, true);
+    // for (const auto col : validationCols) {
+    //     auto canvas = new TCanvas(col.first.c_str(), col.first.c_str(), 1200, 600);
+    //     canvas->Divide(2, 1);
+    //     canvas->cd(1);
+    //     auto allStats = ttree_branch_stats(col.first, true);
 
-        canvas->cd(2);
-        for (const auto stats : rntuple_field_stats(col.second, true)) {
-            allStats.emplace_back(stats);
-        }
+    //     canvas->cd(2);
+    //     for (const auto stats : rntuple_field_stats(col.second, true)) {
+    //         allStats.emplace_back(stats);
+    //     }
 
-        compare_stats(allStats);
-    }
+    //     compare_stats(allStats);
+    // }
 }
 
 // std::cout << "Min  = " << rdf.Min(fieldName).GetValue()

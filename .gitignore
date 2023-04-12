@@ -1,10 +1,10 @@
-build/
 bin/
+build/
 data/
-results/
 figures/
-tmp/
 logs/
+results/
+tmp/
 
 CMakeFiles/
 cmake_install.cmake
@@ -13,3 +13,9 @@ Makefile
 
 *.sublime-project
 *.sublime-workspace
+
+.asetup.save
+*tmp*
+.gdb_history
+
+
