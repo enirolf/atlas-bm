@@ -215,98 +215,135 @@ void bmTreeReadspeed(std::string_view treePath, std::string_view treeName,
   auto tree = std::unique_ptr<TTree>(file->Get<TTree>(std::string(treeName).c_str()));
 
   std::vector<float> *Electrons_pt = nullptr;
-  tree->SetBranchAddress("ElectronsAuxDyn.pt", &Electrons_pt);
+  TBranch *brElectrons_pt = nullptr;
+  tree->SetBranchAddress("ElectronsAuxDyn.pt", &Electrons_pt, &brElectrons_pt);
   std::vector<float> *Electrons_eta = nullptr;
-  tree->SetBranchAddress("ElectronsAuxDyn.eta", &Electrons_eta);
+  TBranch *brElectrons_eta = nullptr;
+  tree->SetBranchAddress("ElectronsAuxDyn.eta", &Electrons_eta, &brElectrons_eta);
   std::vector<float> *Electrons_m = nullptr;
-  tree->SetBranchAddress("ElectronsAuxDyn.m", &Electrons_m);
+  TBranch *brElectrons_m = nullptr;
+  tree->SetBranchAddress("ElectronsAuxDyn.m", &Electrons_m, &brElectrons_m);
   std::vector<float> *Electrons_phi = nullptr;
-  tree->SetBranchAddress("ElectronsAuxDyn.phi", &Electrons_phi);
+  TBranch *brElectrons_phi = nullptr;
+  tree->SetBranchAddress("ElectronsAuxDyn.phi", &Electrons_phi, &brElectrons_phi);
 
   auto histElectrons = new TH1F("Electrons", "Electrons", 128, 0, 2000000);
 
   std::vector<float> *Photons_pt = nullptr;
-  tree->SetBranchAddress("PhotonsAuxDyn.pt", &Photons_pt);
+  TBranch *brPhotons_pt = nullptr;
+  tree->SetBranchAddress("PhotonsAuxDyn.pt", &Photons_pt, &brPhotons_pt);
   std::vector<float> *Photons_eta = nullptr;
-  tree->SetBranchAddress("PhotonsAuxDyn.eta", &Photons_eta);
+  TBranch *brPhotons_eta = nullptr;
+  tree->SetBranchAddress("PhotonsAuxDyn.eta", &Photons_eta, &brPhotons_eta);
   std::vector<float> *Photons_m = nullptr;
-  tree->SetBranchAddress("PhotonsAuxDyn.m", &Photons_m);
+  TBranch *brPhotons_m = nullptr;
+  tree->SetBranchAddress("PhotonsAuxDyn.m", &Photons_m, &brPhotons_m);
   std::vector<float> *Photons_phi = nullptr;
-  tree->SetBranchAddress("PhotonsAuxDyn.phi", &Photons_phi);
+  TBranch *brPhotons_phi = nullptr;
+  tree->SetBranchAddress("PhotonsAuxDyn.phi", &Photons_phi, &brPhotons_phi);
 
   auto histPhotons = new TH1F("Photons", "Photons", 128, 0, 2000000);
 
   std::vector<float> *DiTauJets_pt = nullptr;
-  tree->SetBranchAddress("DiTauJetsAuxDyn.pt", &DiTauJets_pt);
+  TBranch *brDiTauJets_pt = nullptr;
+  tree->SetBranchAddress("DiTauJetsAuxDyn.pt", &DiTauJets_pt, &brDiTauJets_pt);
   std::vector<float> *DiTauJets_eta = nullptr;
-  tree->SetBranchAddress("DiTauJetsAuxDyn.eta", &DiTauJets_eta);
+  TBranch *brDiTauJets_eta = nullptr;
+  tree->SetBranchAddress("DiTauJetsAuxDyn.eta", &DiTauJets_eta, &brDiTauJets_eta);
   std::vector<float> *DiTauJets_m = nullptr;
-  tree->SetBranchAddress("DiTauJetsAuxDyn.m", &DiTauJets_m);
+  TBranch *brDiTauJets_m = nullptr;
+  tree->SetBranchAddress("DiTauJetsAuxDyn.m", &DiTauJets_m, &brDiTauJets_m);
   std::vector<float> *DiTauJets_phi = nullptr;
-  tree->SetBranchAddress("DiTauJetsAuxDyn.phi", &DiTauJets_phi);
+  TBranch *brDiTauJets_phi = nullptr;
+  tree->SetBranchAddress("DiTauJetsAuxDyn.phi", &DiTauJets_phi, &brDiTauJets_phi);
 
   auto histDiTauJets = new TH1F("DiTauJets", "DiTauJets", 128, 0, 2000000);
 
   std::vector<float> *DiTauJetsLowPt_pt = nullptr;
-  tree->SetBranchAddress("DiTauJetsLowPtAuxDyn.pt", &DiTauJetsLowPt_pt);
+  TBranch *brDiTauJetsLowPt_pt = nullptr;
+  tree->SetBranchAddress("DiTauJetsLowPtAuxDyn.pt", &DiTauJetsLowPt_pt, &brDiTauJetsLowPt_pt);
   std::vector<float> *DiTauJetsLowPt_eta = nullptr;
-  tree->SetBranchAddress("DiTauJetsLowPtAuxDyn.eta", &DiTauJetsLowPt_eta);
+  TBranch *brDiTauJetsLowPt_eta = nullptr;
+  tree->SetBranchAddress("DiTauJetsLowPtAuxDyn.eta", &DiTauJetsLowPt_eta, &brDiTauJetsLowPt_eta);
   std::vector<float> *DiTauJetsLowPt_m = nullptr;
-  tree->SetBranchAddress("DiTauJetsLowPtAuxDyn.m", &DiTauJetsLowPt_m);
+  TBranch *brDiTauJetsLowPt_m = nullptr;
+  tree->SetBranchAddress("DiTauJetsLowPtAuxDyn.m", &DiTauJetsLowPt_m, &brDiTauJetsLowPt_m);
   std::vector<float> *DiTauJetsLowPt_phi = nullptr;
-  tree->SetBranchAddress("DiTauJetsLowPtAuxDyn.phi", &DiTauJetsLowPt_phi);
+  TBranch *brDiTauJetsLowPt_phi = nullptr;
+  tree->SetBranchAddress("DiTauJetsLowPtAuxDyn.phi", &DiTauJetsLowPt_phi, &brDiTauJetsLowPt_phi);
 
   auto histDiTauJetsLowPt = new TH1F("DiTauJetsLowPt", "DiTauJetsLowPt", 128, 0, 2000000);
 
   std::vector<float> *TauJets_pt = nullptr;
-  tree->SetBranchAddress("TauJetsAuxDyn.pt", &TauJets_pt);
+  TBranch *brTauJets_pt = nullptr;
+  tree->SetBranchAddress("TauJetsAuxDyn.pt", &TauJets_pt, &brTauJets_pt);
   std::vector<float> *TauJets_eta = nullptr;
-  tree->SetBranchAddress("TauJetsAuxDyn.eta", &TauJets_eta);
+  TBranch *brTauJets_eta = nullptr;
+  tree->SetBranchAddress("TauJetsAuxDyn.eta", &TauJets_eta, &brTauJets_eta);
   std::vector<float> *TauJets_m = nullptr;
-  tree->SetBranchAddress("TauJetsAuxDyn.m", &TauJets_m);
+  TBranch *brTauJets_m = nullptr;
+  tree->SetBranchAddress("TauJetsAuxDyn.m", &TauJets_m, &brTauJets_m);
   std::vector<float> *TauJets_phi = nullptr;
-  tree->SetBranchAddress("TauJetsAuxDyn.phi", &TauJets_phi);
+  TBranch *brTauJets_phi = nullptr;
+  tree->SetBranchAddress("TauJetsAuxDyn.phi", &TauJets_phi, &brTauJets_phi);
 
   auto histTauJets = new TH1F("TauJets", "TauJets", 128, 0, 2000000);
 
   std::vector<float> *TauJets_MuonRM_pt = nullptr;
-  tree->SetBranchAddress("TauJets_MuonRMAuxDyn.pt", &TauJets_MuonRM_pt);
+  TBranch *brTauJets_MuonRM_pt = nullptr;
+  tree->SetBranchAddress("TauJets_MuonRMAuxDyn.pt", &TauJets_MuonRM_pt, &brTauJets_MuonRM_pt);
   std::vector<float> *TauJets_MuonRM_eta = nullptr;
-  tree->SetBranchAddress("TauJets_MuonRMAuxDyn.eta", &TauJets_MuonRM_eta);
+  TBranch *brTauJets_MuonRM_eta = nullptr;
+  tree->SetBranchAddress("TauJets_MuonRMAuxDyn.eta", &TauJets_MuonRM_eta, &brTauJets_MuonRM_eta);
   std::vector<float> *TauJets_MuonRM_m = nullptr;
-  tree->SetBranchAddress("TauJets_MuonRMAuxDyn.m", &TauJets_MuonRM_m);
+  TBranch *brTauJets_MuonRM_m = nullptr;
+  tree->SetBranchAddress("TauJets_MuonRMAuxDyn.m", &TauJets_MuonRM_m, &brTauJets_MuonRM_m);
   std::vector<float> *TauJets_MuonRM_phi = nullptr;
-  tree->SetBranchAddress("TauJets_MuonRMAuxDyn.phi", &TauJets_MuonRM_phi);
+  TBranch *brTauJets_MuonRM_phi = nullptr;
+  tree->SetBranchAddress("TauJets_MuonRMAuxDyn.phi", &TauJets_MuonRM_phi, &brTauJets_MuonRM_phi);
 
   auto histTauJets_MuonRM = new TH1F("TauJets_MuonRM", "TauJets_MuonRM", 128, 0, 2000000);
 
   std::vector<float> *TauNeutralParticleFlowObjects_pt = nullptr;
+  TBranch *brTauNeutralParticleFlowObjects_pt = nullptr;
   tree->SetBranchAddress("TauNeutralParticleFlowObjectsAuxDyn.pt",
-                         &TauNeutralParticleFlowObjects_pt);
+                         &TauNeutralParticleFlowObjects_pt, &brTauNeutralParticleFlowObjects_pt);
   std::vector<float> *TauNeutralParticleFlowObjects_eta = nullptr;
+  TBranch *brTauNeutralParticleFlowObjects_eta = nullptr;
   tree->SetBranchAddress("TauNeutralParticleFlowObjectsAuxDyn.eta",
-                         &TauNeutralParticleFlowObjects_eta);
+                         &TauNeutralParticleFlowObjects_eta, &brTauNeutralParticleFlowObjects_eta);
   std::vector<float> *TauNeutralParticleFlowObjects_m = nullptr;
-  tree->SetBranchAddress("TauNeutralParticleFlowObjectsAuxDyn.m", &TauNeutralParticleFlowObjects_m);
+  TBranch *brTauNeutralParticleFlowObjects_m = nullptr;
+  tree->SetBranchAddress("TauNeutralParticleFlowObjectsAuxDyn.m", &TauNeutralParticleFlowObjects_m,
+                         &brTauNeutralParticleFlowObjects_m);
   std::vector<float> *TauNeutralParticleFlowObjects_phi = nullptr;
+  TBranch *brTauNeutralParticleFlowObjects_phi = nullptr;
   tree->SetBranchAddress("TauNeutralParticleFlowObjectsAuxDyn.phi",
-                         &TauNeutralParticleFlowObjects_phi);
+                         &TauNeutralParticleFlowObjects_phi, &brTauNeutralParticleFlowObjects_phi);
 
   auto histTauNeutralParticleFlowObjects =
       new TH1F("TauNeutralParticleFlowObjects", "TauNeutralParticleFlowObjects", 128, 0, 2000000);
 
   std::vector<float> *TauNeutralParticleFlowObjects_MuonRM_pt = nullptr;
+  TBranch *brTauNeutralParticleFlowObjects_MuonRM_pt = nullptr;
   tree->SetBranchAddress("TauNeutralParticleFlowObjects_MuonRMAuxDyn.pt",
-                         &TauNeutralParticleFlowObjects_MuonRM_pt);
+                         &TauNeutralParticleFlowObjects_MuonRM_pt,
+                         &brTauNeutralParticleFlowObjects_MuonRM_pt);
   std::vector<float> *TauNeutralParticleFlowObjects_MuonRM_eta = nullptr;
+  TBranch *brTauNeutralParticleFlowObjects_MuonRM_eta = nullptr;
   tree->SetBranchAddress("TauNeutralParticleFlowObjects_MuonRMAuxDyn.eta",
-                         &TauNeutralParticleFlowObjects_MuonRM_eta);
+                         &TauNeutralParticleFlowObjects_MuonRM_eta,
+                         &brTauNeutralParticleFlowObjects_MuonRM_eta);
   std::vector<float> *TauNeutralParticleFlowObjects_MuonRM_m = nullptr;
+  TBranch *brTauNeutralParticleFlowObjects_MuonRM_m = nullptr;
   tree->SetBranchAddress("TauNeutralParticleFlowObjects_MuonRMAuxDyn.m",
-                         &TauNeutralParticleFlowObjects_MuonRM_m);
+                         &TauNeutralParticleFlowObjects_MuonRM_m,
+                         &brTauNeutralParticleFlowObjects_MuonRM_m);
   std::vector<float> *TauNeutralParticleFlowObjects_MuonRM_phi = nullptr;
+  TBranch *brTauNeutralParticleFlowObjects_MuonRM_phi = nullptr;
   tree->SetBranchAddress("TauNeutralParticleFlowObjects_MuonRMAuxDyn.phi",
-                         &TauNeutralParticleFlowObjects_MuonRM_phi);
+                         &TauNeutralParticleFlowObjects_MuonRM_phi,
+                         &brTauNeutralParticleFlowObjects_MuonRM_phi);
 
   auto histTauNeutralParticleFlowObjects_MuonRM =
       new TH1F("TauNeutralParticleFlowObjects_MuonRM", "TauNeutralParticleFlowObjects_MuonRM", 128,
@@ -322,33 +359,67 @@ void bmTreeReadspeed(std::string_view treePath, std::string_view treeName,
     }
 
     tree->LoadTree(e);
-    tree->GetEntry(e);
+
+    brElectrons_pt->GetEntry(e);
+    brElectrons_eta->GetEntry(e);
+    brElectrons_m->GetEntry(e);
+    brElectrons_phi->GetEntry(e);
 
     auto invMassElectrons = InvariantMass(ROOT::RVecF(*Electrons_pt), ROOT::RVecF(*Electrons_eta),
                                           ROOT::RVecF(*Electrons_phi), ROOT::RVecF(*Electrons_m));
     histElectrons->Fill(invMassElectrons);
 
+    brPhotons_pt->GetEntry(e);
+    brPhotons_eta->GetEntry(e);
+    brPhotons_m->GetEntry(e);
+    brPhotons_phi->GetEntry(e);
+
     auto invMassPhotons = InvariantMass(ROOT::RVecF(*Photons_pt), ROOT::RVecF(*Photons_eta),
                                         ROOT::RVecF(*Photons_phi), ROOT::RVecF(*Photons_m));
     histPhotons->Fill(invMassPhotons);
 
+    brTauJets_pt->GetEntry(e);
+    brTauJets_eta->GetEntry(e);
+    brTauJets_m->GetEntry(e);
+    brTauJets_phi->GetEntry(e);
+
     auto invMassTauJets = InvariantMass(ROOT::RVecF(*TauJets_pt), ROOT::RVecF(*TauJets_eta),
                                         ROOT::RVecF(*TauJets_phi), ROOT::RVecF(*TauJets_m));
     histTauJets->Fill(invMassTauJets);
+
+    brTauJets_MuonRM_pt->GetEntry(e);
+    brTauJets_MuonRM_eta->GetEntry(e);
+    brTauJets_MuonRM_m->GetEntry(e);
+    brTauJets_MuonRM_phi->GetEntry(e);
 
     auto invMassTauJets_MuonRM =
         InvariantMass(ROOT::RVecF(*TauJets_MuonRM_pt), ROOT::RVecF(*TauJets_MuonRM_eta),
                       ROOT::RVecF(*TauJets_MuonRM_phi), ROOT::RVecF(*TauJets_MuonRM_m));
     histTauJets_MuonRM->Fill(invMassTauJets_MuonRM);
 
+    brDiTauJets_pt->GetEntry(e);
+    brDiTauJets_eta->GetEntry(e);
+    brDiTauJets_m->GetEntry(e);
+    brDiTauJets_phi->GetEntry(e);
+
     auto invMassDiTauJets = InvariantMass(ROOT::RVecF(*DiTauJets_pt), ROOT::RVecF(*DiTauJets_eta),
                                           ROOT::RVecF(*DiTauJets_phi), ROOT::RVecF(*DiTauJets_m));
     histDiTauJets->Fill(invMassDiTauJets);
+
+    brDiTauJetsLowPt_pt->GetEntry(e);
+    brDiTauJetsLowPt_eta->GetEntry(e);
+    brDiTauJetsLowPt_m->GetEntry(e);
+    brDiTauJetsLowPt_phi->GetEntry(e);
 
     auto invMassDiTauJetsLowPt =
         InvariantMass(ROOT::RVecF(*DiTauJetsLowPt_pt), ROOT::RVecF(*DiTauJetsLowPt_eta),
                       ROOT::RVecF(*DiTauJetsLowPt_phi), ROOT::RVecF(*DiTauJetsLowPt_m));
     histDiTauJetsLowPt->Fill(invMassDiTauJetsLowPt);
+
+    brTauNeutralParticleFlowObjects_pt->GetEntry(e);
+    brTauNeutralParticleFlowObjects_eta->GetEntry(e);
+    brTauNeutralParticleFlowObjects_m->GetEntry(e);
+    brTauNeutralParticleFlowObjects_phi->GetEntry(e);
 
     auto invMassTauNeutralParticleFlowObjects =
         InvariantMass(ROOT::RVecF(*TauNeutralParticleFlowObjects_pt),
@@ -356,6 +427,11 @@ void bmTreeReadspeed(std::string_view treePath, std::string_view treeName,
                       ROOT::RVecF(*TauNeutralParticleFlowObjects_phi),
                       ROOT::RVecF(*TauNeutralParticleFlowObjects_m));
     histTauNeutralParticleFlowObjects->Fill(invMassTauNeutralParticleFlowObjects);
+
+    brTauNeutralParticleFlowObjects_MuonRM_pt->GetEntry(e);
+    brTauNeutralParticleFlowObjects_MuonRM_eta->GetEntry(e);
+    brTauNeutralParticleFlowObjects_MuonRM_m->GetEntry(e);
+    brTauNeutralParticleFlowObjects_MuonRM_phi->GetEntry(e);
 
     auto invMassTauNeutralParticleFlowObjects_MuonRM =
         InvariantMass(ROOT::RVecF(*TauNeutralParticleFlowObjects_MuonRM_pt),
@@ -379,10 +455,10 @@ void bmTreeReadspeed(std::string_view treePath, std::string_view treeName,
 
 void bmRDFReadspeed(std::string_view storePath, std::string_view storeName, bool isNTuple,
                     const std::vector<std::string> &containers) {
-  auto tInit = std::chrono::steady_clock::now();
+  // auto tInit = std::chrono::steady_clock::now();
   ROOT::RDataFrame rdf(storeName, storePath);
 
-  std::chrono::steady_clock::time_point tStart;
+  // std::chrono::steady_clock::time_point tStart;
   for (const auto &c : containers) {
     auto hPt = rdf.Histo1D(c + ":pt");
     auto hEta = rdf.Histo1D(c + ":eta");
