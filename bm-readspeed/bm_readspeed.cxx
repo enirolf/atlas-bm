@@ -29,28 +29,6 @@ using ROOT::Experimental::RNTupleReader;
 using ROOT::Experimental::RNTupleView;
 using namespace ROOT::VecOps;
 
-const std::vector<std::string> kValidContainers = {"ElectronsAuxDyn",
-                                                   "PhotonsAuxDyn",
-                                                   "DiTauJetsAuxDyn",
-                                                   "DiTauJetsLowPtAuxDyn",
-                                                   "TauJetsAuxDyn",
-                                                   "TauJets_MuonRMAuxDyn",
-                                                   "TauNeutralParticleFlowObjectsAuxDyn",
-                                                   "TauNeutralParticleFlowObjects_MuonRMAuxDyn"};
-
-std::vector<std::string> getNContainers(int n) {
-  std::vector<std::string> resContainers;
-  std::sample(kValidContainers.begin(), kValidContainers.end(), std::back_inserter(resContainers),
-              n, std::mt19937{std::random_device{}()});
-  return resContainers;
-}
-
-struct BranchHistogram {
-  TBranch *branch;
-  std::vector<float> *branchEntry;
-  std::unique_ptr<TH1F> histogram;
-};
-
 static void showHist(TH1F *hist) {
   auto app = TApplication("", nullptr, nullptr);
   auto c = new TCanvas("c", "", 700, 750);
@@ -67,8 +45,7 @@ static void showHist(TH1F *hist) {
   return;
 }
 
-void bmNTupleReadspeed(std::string_view ntuplePath, std::string_view ntupleName,
-                       const std::vector<std::string> &containers) {
+void bmNTupleReadspeed(std::string_view ntuplePath, std::string_view ntupleName) {
 
   auto tInit = std::chrono::steady_clock::now();
 
@@ -194,21 +171,19 @@ void bmNTupleReadspeed(std::string_view ntuplePath, std::string_view ntupleName,
                       ROOT::RVecF(viewTauNeutralParticleFlowObjects_MuonRM_m(e)));
     histTauNeutralParticleFlowObjects_MuonRM->Fill(invMassTauNeutralParticleFlowObjects_MuonRM);
 
-    if (e % 20000 == 0) {
-      std::cout << e << " events processed" << std::endl;
-    }
+    // if (e % 20000 == 0) {
+    //   std::cout << e << " events processed" << std::endl;
+    // }
   }
 
   auto tEnd = std::chrono::steady_clock::now();
   auto tRuntimeInit = std::chrono::duration_cast<std::chrono::microseconds>(tStart - tInit).count();
   auto tRuntimeLoop = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count();
 
-  std::cout << nEvents << "\t" << containers.size() * 4 << "\t" << tRuntimeInit << "\t"
-            << tRuntimeLoop << std::endl;
+  std::cout << nEvents << "\t" << tRuntimeInit << "\t" << tRuntimeLoop << std::endl;
 }
 
-void bmTreeReadspeed(std::string_view treePath, std::string_view treeName,
-                     const std::vector<std::string> &containers) {
+void bmTreeReadspeed(std::string_view treePath, std::string_view treeName) {
   auto tInit = std::chrono::steady_clock::now();
 
   auto file = std::unique_ptr<TFile>(TFile::Open(std::string(treePath).c_str()));
@@ -440,31 +415,29 @@ void bmTreeReadspeed(std::string_view treePath, std::string_view treeName,
                       ROOT::RVecF(*TauNeutralParticleFlowObjects_MuonRM_m));
     histTauNeutralParticleFlowObjects_MuonRM->Fill(invMassTauNeutralParticleFlowObjects_MuonRM);
 
-    if (e % 20000 == 0) {
-      std::cout << e << " events processed" << std::endl;
-    }
+    // if (e % 20000 == 0) {
+    //   std::cout << e << " events processed" << std::endl;
+    // }
   }
 
   auto tEnd = std::chrono::steady_clock::now();
   auto tRuntimeInit = std::chrono::duration_cast<std::chrono::microseconds>(tStart - tInit).count();
   auto tRuntimeLoop = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count();
 
-  std::cout << nEvents << "\t" << containers.size() * 4 << "\t" << tRuntimeInit << "\t"
-            << tRuntimeLoop << std::endl;
+  std::cout << nEvents << "\t" << tRuntimeInit << "\t" << tRuntimeLoop << std::endl;
 }
 
-void bmRDFReadspeed(std::string_view storePath, std::string_view storeName, bool isNTuple,
-                    const std::vector<std::string> &containers) {
-  // auto tInit = std::chrono::steady_clock::now();
-  ROOT::RDataFrame rdf(storeName, storePath);
+void bmRDFReadspeed(std::string_view storePath, std::string_view storeName, bool isNTuple) {
+  // // auto tInit = std::chrono::steady_clock::now();
+  // ROOT::RDataFrame rdf(storeName, storePath);
 
-  // std::chrono::steady_clock::time_point tStart;
-  for (const auto &c : containers) {
-    auto hPt = rdf.Histo1D(c + ":pt");
-    auto hEta = rdf.Histo1D(c + ":eta");
-    auto hMass = rdf.Histo1D(c + ":m");
-    auto hPhi = rdf.Histo1D(c + ":phi");
-  }
+  // // std::chrono::steady_clock::time_point tStart;
+  // for (const auto &c : containers) {
+  //   auto hPt = rdf.Histo1D(c + ":pt");
+  //   auto hEta = rdf.Histo1D(c + ":eta");
+  //   auto hMass = rdf.Histo1D(c + ":m");
+  //   auto hPhi = rdf.Histo1D(c + ":phi");
+  // }
 }
 
 static void printUsage(std::string_view prog) {
@@ -480,11 +453,9 @@ int main(int argc, char **argv) {
   std::string inputPath, storeName;
   bool checkNTuple = false;
   bool useRDF = false;
-  std::vector<std::string> containers = kValidContainers;
-  size_t nContainers = 0;
 
   int c;
-  while ((c = getopt(argc, argv, "hi:n:m:c:")) != -1) {
+  while ((c = getopt(argc, argv, "hi:n:m:")) != -1) {
     switch (c) {
     case 'h':
       printUsage(argv[0]);
@@ -508,19 +479,6 @@ int main(int argc, char **argv) {
         return 1;
       }
       break;
-    case 'c':
-      nContainers = std::atoi(optarg);
-      if (nContainers > kValidContainers.size()) {
-        std::cout << "Specified number of containers is higher than the number "
-                     "of valid containers (8). Checking all valid containers..."
-                  << std::endl;
-      } else if (nContainers < 0) {
-        std::cerr << "Invalid number of containers: " << nContainers << std::endl;
-        return 1;
-      } else {
-        containers = getNContainers(nContainers);
-      }
-      break;
     default:
       printUsage(argv[0]);
       return 1;
@@ -540,11 +498,11 @@ int main(int argc, char **argv) {
   }
 
   if (useRDF) {
-    bmRDFReadspeed(inputPath, storeName, checkNTuple, containers);
+    bmRDFReadspeed(inputPath, storeName, checkNTuple);
   } else if (checkNTuple) {
-    bmNTupleReadspeed(inputPath, storeName, containers);
+    bmNTupleReadspeed(inputPath, storeName);
   } else {
-    bmTreeReadspeed(inputPath, storeName, containers);
+    bmTreeReadspeed(inputPath, storeName);
   }
 
   return 0;
