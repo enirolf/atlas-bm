@@ -15,8 +15,12 @@ const char *kCompressionNames[] = {"uncompressed", "lz4", "zstd", "zlib", "lzma"
 
 enum EnumPlotColors { kPlotRed = kRed - 3, kPlotBlue = kBlue - 3, kPlotGreen = kGreen - 2 };
 
-const std::map<std::string, int> colors{{"ttree", kPlotBlue}, {"rntuple", kPlotRed}};
-const std::map<std::string, int> styles{{"none", 1001}, {"zstd", 1001}, {"memory", 1001}};
+const std::map<std::string, int> colors{{"ttree", kPlotBlue},           {"rntuple", kPlotRed},
+                                        {"rntuple_mt", kPlotRed},       {"rntuple_uring", kPlotRed},
+                                        {"rntuple_mt_uring", kPlotRed}, {"fill", kWhite}};
+const std::map<std::string, int> styles{
+    {"ttree", 1001},         {"rntuple", 1001},          {"rntuple_mt", 3001},
+    {"rntuple_uring", 3144}, {"rntuple_mt_uring", 3008}, {"fill", 1001}};
 
 float StdErr(ROOT::VecOps::RVec<float> vals) {
   int nVal = vals.size();
