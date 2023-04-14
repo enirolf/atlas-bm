@@ -482,8 +482,10 @@ int main(int argc, char **argv) {
       break;
     case 'm':
       ROOT::EnableImplicitMT();
+      break;
     case 'v':
       verbose = true;
+      break;
     default:
       printUsage(argv[0]);
       return 1;
