@@ -52,7 +52,7 @@ void bmTreeFloatVecSize(const std::string treePath, const std::string treeName) 
     }
   }
 
-  std::cout << "rntuple " << tree->GetEntries() << " " << nColumns << " " << sizeOnDisk << " "
+  std::cout << "ttree " << tree->GetEntries() << " " << nColumns << " " << sizeOnDisk << " "
             << sizeInMemory << std::endl;
 }
 

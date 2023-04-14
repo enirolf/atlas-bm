@@ -12,7 +12,7 @@ function bm_size() {
 
       echo "Running for $storage_type ($phys_file_type, $compression)..."
 
-      results=$(./bin/bm_size -i $source_file -n $storage_name -m $storage_type)
+      results=$(./bin/bm_size -i $source_file -n $storage_name -s $storage_type)
       echo "$results"
       echo "$results" >> $results_file
     done

@@ -28,13 +28,13 @@ void bmTreeSize(const std::string treePath, const std::string treeName) {
 
   auto tree = file->Get<TTree>(treeName.c_str());
 
-  std::cout << "ttree\t" << file->GetCompressionSettings() << "\t"
-            << tree->GetEntries() << "\t" << tree->GetNbranches() << "\t" 
-            << tree->GetZipBytes() << "\t" << tree->GetTotBytes() << std::endl;
+  std::cout << "ttree\t" << file->GetCompressionSettings() << "\t" << tree->GetEntries() << "\t"
+            << tree->GetNbranches() << "\t" << tree->GetZipBytes() << "\t" << tree->GetTotBytes()
+            << std::endl;
 }
 
 static void printUsage(std::string_view prog) {
-  std::cout << "USAGE: " << prog << " -i INPUT_PATH -n STORE_NAME -m (ttree|rntuple)" << std::endl;
+  std::cout << "USAGE: " << prog << " -i INPUT_PATH -n STORE_NAME -s (ttree|rntuple)" << std::endl;
 }
 
 int main(int argc, char **argv) {
@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
   bool checkNTuple = false;
 
   int c;
-  while ((c = getopt(argc, argv, "hi:n:m:")) != -1) {
+  while ((c = getopt(argc, argv, "hi:n:s:")) != -1) {
     switch (c) {
     case 'h':
       printUsage(argv[0]);
@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
     case 'n':
       storeName = optarg;
       break;
-    case 'm':
+    case 's':
       if (strcmp(optarg, "rntuple") == 0) {
         checkNTuple = true;
       } else if (strcmp(optarg, "ttree") != 0) {

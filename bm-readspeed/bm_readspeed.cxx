@@ -12,6 +12,7 @@
 #include <TRootCanvas.h>
 #include <TSystem.h>
 #include <TTree.h>
+#include <TTreePerfStats.h>
 
 #include <algorithm>
 #include <chrono>
@@ -45,11 +46,14 @@ static void showHist(TH1F *hist) {
   return;
 }
 
-void bmNTupleReadspeed(std::string_view ntuplePath, std::string_view ntupleName) {
+void bmNTupleReadspeed(std::string_view ntuplePath, std::string_view ntupleName,
+                       bool verbose = false) {
 
   auto tInit = std::chrono::steady_clock::now();
 
   auto ntuple = RNTupleReader::Open(ntupleName, ntuplePath);
+  if (verbose)
+    ntuple->EnableMetrics();
 
   auto viewElectrons_pt = ntuple->GetView<std::vector<float>>("ElectronsAuxDyn:pt");
   auto viewElectrons_eta = ntuple->GetView<std::vector<float>>("ElectronsAuxDyn:eta");
@@ -171,9 +175,9 @@ void bmNTupleReadspeed(std::string_view ntuplePath, std::string_view ntupleName)
                       ROOT::RVecF(viewTauNeutralParticleFlowObjects_MuonRM_m(e)));
     histTauNeutralParticleFlowObjects_MuonRM->Fill(invMassTauNeutralParticleFlowObjects_MuonRM);
 
-    // if (e % 20000 == 0) {
-    //   std::cout << e << " events processed" << std::endl;
-    // }
+    if (verbose && e % 20000 == 0) {
+      std::cout << e << " events processed" << std::endl;
+    }
   }
 
   auto tEnd = std::chrono::steady_clock::now();
@@ -181,13 +185,17 @@ void bmNTupleReadspeed(std::string_view ntuplePath, std::string_view ntupleName)
   auto tRuntimeLoop = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count();
 
   std::cout << nEvents << "\t" << tRuntimeInit << "\t" << tRuntimeLoop << std::endl;
+  if (verbose)
+    ntuple->PrintInfo(ROOT::Experimental::ENTupleInfo::kMetrics);
 }
 
-void bmTreeReadspeed(std::string_view treePath, std::string_view treeName) {
+void bmTreeReadspeed(std::string_view treePath, std::string_view treeName, bool verbose = false) {
   auto tInit = std::chrono::steady_clock::now();
 
   auto file = std::unique_ptr<TFile>(TFile::Open(std::string(treePath).c_str()));
   auto tree = std::unique_ptr<TTree>(file->Get<TTree>(std::string(treeName).c_str()));
+
+  TTreePerfStats *ps = new TTreePerfStats("ioperf", tree.get());
 
   std::vector<float> *Electrons_pt = nullptr;
   TBranch *brElectrons_pt = nullptr;
@@ -415,9 +423,9 @@ void bmTreeReadspeed(std::string_view treePath, std::string_view treeName) {
                       ROOT::RVecF(*TauNeutralParticleFlowObjects_MuonRM_m));
     histTauNeutralParticleFlowObjects_MuonRM->Fill(invMassTauNeutralParticleFlowObjects_MuonRM);
 
-    // if (e % 20000 == 0) {
-    //   std::cout << e << " events processed" << std::endl;
-    // }
+    if (verbose && e % 20000 == 0) {
+      std::cout << e << " events processed" << std::endl;
+    }
   }
 
   auto tEnd = std::chrono::steady_clock::now();
@@ -425,24 +433,16 @@ void bmTreeReadspeed(std::string_view treePath, std::string_view treeName) {
   auto tRuntimeLoop = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count();
 
   std::cout << nEvents << "\t" << tRuntimeInit << "\t" << tRuntimeLoop << std::endl;
+  if (verbose)
+    ps->Print();
 }
 
 void bmRDFReadspeed(std::string_view storePath, std::string_view storeName, bool isNTuple) {
-  // // auto tInit = std::chrono::steady_clock::now();
-  // ROOT::RDataFrame rdf(storeName, storePath);
-
-  // // std::chrono::steady_clock::time_point tStart;
-  // for (const auto &c : containers) {
-  //   auto hPt = rdf.Histo1D(c + ":pt");
-  //   auto hEta = rdf.Histo1D(c + ":eta");
-  //   auto hMass = rdf.Histo1D(c + ":m");
-  //   auto hPhi = rdf.Histo1D(c + ":phi");
-  // }
+  std::cout << "TODO" << std::endl;
 }
 
 static void printUsage(std::string_view prog) {
-  std::cout << prog << " -i INPUT_PATH -n STORE_NAME -m (ttree|rntuple) -c N_CONTAINERS"
-            << std::endl;
+  std::cout << prog << " [-v -m -h] -i INPUT_PATH -n STORE_NAME -s (ttree|rntuple)" << std::endl;
 }
 
 int main(int argc, char **argv) {
@@ -453,9 +453,10 @@ int main(int argc, char **argv) {
   std::string inputPath, storeName;
   bool checkNTuple = false;
   bool useRDF = false;
+  bool verbose = false;
 
   int c;
-  while ((c = getopt(argc, argv, "hi:n:m:")) != -1) {
+  while ((c = getopt(argc, argv, "hmvi:n:s:")) != -1) {
     switch (c) {
     case 'h':
       printUsage(argv[0]);
@@ -466,7 +467,7 @@ int main(int argc, char **argv) {
     case 'n':
       storeName = optarg;
       break;
-    case 'm':
+    case 's':
       if (strcmp(optarg, "rntuple") == 0) {
         checkNTuple = true;
       } else if (strcmp(optarg, "rdf+ttree") == 0) {
@@ -479,6 +480,10 @@ int main(int argc, char **argv) {
         return 1;
       }
       break;
+    case 'm':
+      ROOT::EnableImplicitMT();
+    case 'v':
+      verbose = true;
     default:
       printUsage(argv[0]);
       return 1;
@@ -500,9 +505,9 @@ int main(int argc, char **argv) {
   if (useRDF) {
     bmRDFReadspeed(inputPath, storeName, checkNTuple);
   } else if (checkNTuple) {
-    bmNTupleReadspeed(inputPath, storeName);
+    bmNTupleReadspeed(inputPath, storeName, verbose);
   } else {
-    bmTreeReadspeed(inputPath, storeName);
+    bmTreeReadspeed(inputPath, storeName, verbose);
   }
 
   return 0;
