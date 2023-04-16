@@ -7,20 +7,30 @@ function drop_caches() {
 function bm_cold_cache() {
   storage_name=$1
   storage_type=$2
-  results_dir=$3
+  results_dir=$3/$storage_type
 
-  mkdir -p $results_dir/$storage_type
+  if [ "$(root-config --has-uring)" = "yes" ]; then
+    results_dir=${results_dir}_uring
+  fi
+
+  mkdir -p $results_dir
 
   for phys_file_type in {data,mc}; do
     for compression in {0,201,207,505}; do
       source_file=${SOURCE_DIR}/${phys_file_type}/DAOD_PHYS.${storage_type}.root~${compression}
-      results_file=${results_dir}/${storage_type}/readspeed_cold_${phys_file_type}_${compression}.txt
+      results_file=${results_dir}/readspeed_cold_${phys_file_type}_${compression}.txt
 
       echo "Running for $storage_type ($phys_file_type, $compression)..."
 
       for (( i = 0; i < $N_REPETITIONS; i++ )); do
         drop_caches
-        results=$(bin/bm_readspeed -i $source_file -n $storage_name -s $storage_type)
+
+        if [ "$storage_type" = "rntuple_mt" ]; then
+            source_file=${SOURCE_DIR}/${phys_file_type}/DAOD_PHYS.rntuple.root~${compression}
+            results=$(bin/bm_readspeed -m -v -i $source_file -n $storage_name -s rntuple)
+        else
+            results=$(bin/bm_readspeed -v -i $source_file -n $storage_name -s $storage_type)
+        fi
         echo "$results"
         echo "$results" >> $results_file
       done
@@ -31,7 +41,9 @@ function bm_cold_cache() {
 function main() {
   bm_cold_cache CollectionTree ttree $1
   bm_cold_cache RNT:CollectionTree rntuple $1
+  bm_cold_cache RNT:CollectionTree rntuple_mt $1
 }
+
 
 SOURCE_DIR=$1
 if [ -z "$SOURCE_DIR" ]; then
