@@ -13,5 +13,5 @@ cmake_path(SET BIN_DIR NORMALIZE "${CMAKE_SOURCE_DIR}/bin")
 file(MAKE_DIRECTORY ${BIN_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${BIN_DIR})
 
-add_subdirectory(bm-size)
+# add_subdirectory(bm-size)
 add_subdirectory(bm-readspeed)
