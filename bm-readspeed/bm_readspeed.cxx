@@ -28,7 +28,7 @@ using ROOT::Experimental::RNTuple;
 using ROOT::Experimental::RNTupleModel;
 using ROOT::Experimental::RNTupleReader;
 using ROOT::Experimental::RNTupleView;
-using namespace ROOT::VecOps;
+// using namespace ROOT::VecOps;
 
 static void showHist(TH1F *hist) {
   auto app = TApplication("", nullptr, nullptr);
@@ -132,52 +132,68 @@ void bmNTupleReadspeed(std::string_view ntuplePath, std::string_view ntupleName,
     }
 
     auto invMassElectrons =
-        InvariantMass(ROOT::RVecF(viewElectrons_pt(e)), ROOT::RVecF(viewElectrons_eta(e)),
-                      ROOT::RVecF(viewElectrons_phi(e)), ROOT::RVecF(viewElectrons_m(e)));
+        InvariantMass(ROOT::RVecF(*viewElectrons_pt(e).data(), viewElectrons_pt(e).size()),
+                      ROOT::RVecF(*viewElectrons_eta(e).data(), viewElectrons_eta(e).size()),
+                      ROOT::RVecF(*viewElectrons_m(e).data(), viewElectrons_m(e).size()),
+                      ROOT::RVecF(*viewElectrons_phi(e).data(), viewElectrons_phi(e).size()));
     histElectrons->Fill(invMassElectrons);
 
     auto invMassPhotons =
-        InvariantMass(ROOT::RVecF(viewPhotons_pt(e)), ROOT::RVecF(viewPhotons_eta(e)),
-                      ROOT::RVecF(viewPhotons_phi(e)), ROOT::RVecF(viewPhotons_m(e)));
+        InvariantMass(ROOT::RVecF(*viewPhotons_pt(e).data(), viewPhotons_pt(e).size()),
+                      ROOT::RVecF(*viewPhotons_eta(e).data(), viewPhotons_eta(e).size()),
+                      ROOT::RVecF(*viewPhotons_m(e).data(), viewPhotons_m(e).size()),
+                      ROOT::RVecF(*viewPhotons_phi(e).data(), viewPhotons_phi(e).size()));
     histPhotons->Fill(invMassPhotons);
 
     auto invMassDiTauJets =
-        InvariantMass(ROOT::RVecF(viewDiTauJets_pt(e)), ROOT::RVecF(viewDiTauJets_eta(e)),
-                      ROOT::RVecF(viewDiTauJets_phi(e)), ROOT::RVecF(viewDiTauJets_m(e)));
+        InvariantMass(ROOT::RVecF(*viewDiTauJets_pt(e).data(), viewDiTauJets_pt(e).size()),
+                      ROOT::RVecF(*viewDiTauJets_eta(e).data(), viewDiTauJets_eta(e).size()),
+                      ROOT::RVecF(*viewDiTauJets_m(e).data(), viewDiTauJets_m(e).size()),
+                      ROOT::RVecF(*viewDiTauJets_phi(e).data(), viewDiTauJets_phi(e).size()));
     histDiTauJets->Fill(invMassDiTauJets);
 
-    auto invMassDiTauJetsLowPt =
-        InvariantMass(ROOT::RVecF(viewDiTauJetsLowPt_pt(e)), ROOT::RVecF(viewDiTauJetsLowPt_eta(e)),
-                      ROOT::RVecF(viewDiTauJetsLowPt_phi(e)), ROOT::RVecF(viewDiTauJetsLowPt_m(e)));
+    auto invMassDiTauJetsLowPt = InvariantMass(
+        ROOT::RVecF(*viewDiTauJetsLowPt_pt(e).data(), viewDiTauJetsLowPt_pt(e).size()),
+        ROOT::RVecF(*viewDiTauJetsLowPt_eta(e).data(), viewDiTauJetsLowPt_eta(e).size()),
+        ROOT::RVecF(*viewDiTauJetsLowPt_m(e).data(), viewDiTauJetsLowPt_m(e).size()),
+        ROOT::RVecF(*viewDiTauJetsLowPt_phi(e).data(), viewDiTauJetsLowPt_phi(e).size()));
     histDiTauJetsLowPt->Fill(invMassDiTauJetsLowPt);
 
     auto invMassTauJets =
-        InvariantMass(ROOT::RVecF(viewTauJets_pt(e)), ROOT::RVecF(viewTauJets_eta(e)),
-                      ROOT::RVecF(viewTauJets_phi(e)), ROOT::RVecF(viewTauJets_m(e)));
+        InvariantMass(ROOT::RVecF(*viewTauJets_pt(e).data(), viewTauJets_pt(e).size()),
+                      ROOT::RVecF(*viewTauJets_eta(e).data(), viewTauJets_eta(e).size()),
+                      ROOT::RVecF(*viewTauJets_m(e).data(), viewTauJets_m(e).size()),
+                      ROOT::RVecF(*viewTauJets_phi(e).data(), viewTauJets_phi(e).size()));
     histTauJets->Fill(invMassTauJets);
 
-    auto invMassTauJets_MuonRM =
-        InvariantMass(ROOT::RVecF(viewTauJets_MuonRM_pt(e)), ROOT::RVecF(viewTauJets_MuonRM_eta(e)),
-                      ROOT::RVecF(viewTauJets_MuonRM_phi(e)), ROOT::RVecF(viewTauJets_MuonRM_m(e)));
+    auto invMassTauJets_MuonRM = InvariantMass(
+        ROOT::RVecF(*viewTauJets_MuonRM_pt(e).data(), viewTauJets_MuonRM_pt(e).size()),
+        ROOT::RVecF(*viewTauJets_MuonRM_eta(e).data(), viewTauJets_MuonRM_eta(e).size()),
+        ROOT::RVecF(*viewTauJets_MuonRM_m(e).data(), viewTauJets_MuonRM_m(e).size()),
+        ROOT::RVecF(*viewTauJets_MuonRM_phi(e).data(), viewTauJets_MuonRM_phi(e).size()));
     histTauJets_MuonRM->Fill(invMassTauJets_MuonRM);
 
     auto invMassTauNeutralParticleFlowObjects =
-        InvariantMass(ROOT::RVecF(viewTauNeutralParticleFlowObjects_pt(e)),
-                      ROOT::RVecF(viewTauNeutralParticleFlowObjects_eta(e)),
-                      ROOT::RVecF(viewTauNeutralParticleFlowObjects_phi(e)),
-                      ROOT::RVecF(viewTauNeutralParticleFlowObjects_m(e)));
+        InvariantMass(ROOT::RVecF(*viewTauNeutralParticleFlowObjects_pt(e).data(),
+                                  viewTauNeutralParticleFlowObjects_pt(e).size()),
+                      ROOT::RVecF(*viewTauNeutralParticleFlowObjects_eta(e).data(),
+                                  viewTauNeutralParticleFlowObjects_eta(e).size()),
+                      ROOT::RVecF(*viewTauNeutralParticleFlowObjects_m(e).data(),
+                                  viewTauNeutralParticleFlowObjects_m(e).size()),
+                      ROOT::RVecF(*viewTauNeutralParticleFlowObjects_phi(e).data(),
+                                  viewTauNeutralParticleFlowObjects_phi(e).size()));
     histTauNeutralParticleFlowObjects->Fill(invMassTauNeutralParticleFlowObjects);
 
     auto invMassTauNeutralParticleFlowObjects_MuonRM =
-        InvariantMass(ROOT::RVecF(viewTauNeutralParticleFlowObjects_MuonRM_pt(e)),
-                      ROOT::RVecF(viewTauNeutralParticleFlowObjects_MuonRM_eta(e)),
-                      ROOT::RVecF(viewTauNeutralParticleFlowObjects_MuonRM_phi(e)),
-                      ROOT::RVecF(viewTauNeutralParticleFlowObjects_MuonRM_m(e)));
+        InvariantMass(ROOT::RVecF(*viewTauNeutralParticleFlowObjects_MuonRM_pt(e).data(),
+                                  viewTauNeutralParticleFlowObjects_MuonRM_pt(e).size()),
+                      ROOT::RVecF(*viewTauNeutralParticleFlowObjects_MuonRM_eta(e).data(),
+                                  viewTauNeutralParticleFlowObjects_MuonRM_eta(e).size()),
+                      ROOT::RVecF(*viewTauNeutralParticleFlowObjects_MuonRM_m(e).data(),
+                                  viewTauNeutralParticleFlowObjects_MuonRM_m(e).size()),
+                      ROOT::RVecF(*viewTauNeutralParticleFlowObjects_MuonRM_phi(e).data(),
+                                  viewTauNeutralParticleFlowObjects_MuonRM_phi(e).size()));
     histTauNeutralParticleFlowObjects_MuonRM->Fill(invMassTauNeutralParticleFlowObjects_MuonRM);
-
-    if (verbose && e % 20000 == 0) {
-      std::cout << e << " events processed" << std::endl;
-    }
   }
 
   auto tEnd = std::chrono::steady_clock::now();
@@ -348,8 +364,11 @@ void bmTreeReadspeed(std::string_view treePath, std::string_view treeName, bool 
     brElectrons_m->GetEntry(e);
     brElectrons_phi->GetEntry(e);
 
-    auto invMassElectrons = InvariantMass(ROOT::RVecF(*Electrons_pt), ROOT::RVecF(*Electrons_eta),
-                                          ROOT::RVecF(*Electrons_phi), ROOT::RVecF(*Electrons_m));
+    auto invMassElectrons =
+        InvariantMass(ROOT::RVecF(*Electrons_pt->data(), Electrons_pt->size()),
+                      ROOT::RVecF(*Electrons_eta->data(), Electrons_eta->size()),
+                      ROOT::RVecF(*Electrons_m->data(), Electrons_m->size()),
+                      ROOT::RVecF(*Electrons_phi->data(), Electrons_phi->size()));
     histElectrons->Fill(invMassElectrons);
 
     brPhotons_pt->GetEntry(e);
@@ -357,8 +376,10 @@ void bmTreeReadspeed(std::string_view treePath, std::string_view treeName, bool 
     brPhotons_m->GetEntry(e);
     brPhotons_phi->GetEntry(e);
 
-    auto invMassPhotons = InvariantMass(ROOT::RVecF(*Photons_pt), ROOT::RVecF(*Photons_eta),
-                                        ROOT::RVecF(*Photons_phi), ROOT::RVecF(*Photons_m));
+    auto invMassPhotons = InvariantMass(ROOT::RVecF(*Photons_pt->data(), Photons_pt->size()),
+                                        ROOT::RVecF(*Photons_eta->data(), Photons_eta->size()),
+                                        ROOT::RVecF(*Photons_m->data(), Photons_m->size()),
+                                        ROOT::RVecF(*Photons_phi->data(), Photons_phi->size()));
     histPhotons->Fill(invMassPhotons);
 
     brTauJets_pt->GetEntry(e);
@@ -366,8 +387,10 @@ void bmTreeReadspeed(std::string_view treePath, std::string_view treeName, bool 
     brTauJets_m->GetEntry(e);
     brTauJets_phi->GetEntry(e);
 
-    auto invMassTauJets = InvariantMass(ROOT::RVecF(*TauJets_pt), ROOT::RVecF(*TauJets_eta),
-                                        ROOT::RVecF(*TauJets_phi), ROOT::RVecF(*TauJets_m));
+    auto invMassTauJets = InvariantMass(ROOT::RVecF(*TauJets_pt->data(), TauJets_pt->size()),
+                                        ROOT::RVecF(*TauJets_eta->data(), TauJets_eta->size()),
+                                        ROOT::RVecF(*TauJets_m->data(), TauJets_m->size()),
+                                        ROOT::RVecF(*TauJets_phi->data(), TauJets_phi->size()));
     histTauJets->Fill(invMassTauJets);
 
     brTauJets_MuonRM_pt->GetEntry(e);
@@ -376,8 +399,10 @@ void bmTreeReadspeed(std::string_view treePath, std::string_view treeName, bool 
     brTauJets_MuonRM_phi->GetEntry(e);
 
     auto invMassTauJets_MuonRM =
-        InvariantMass(ROOT::RVecF(*TauJets_MuonRM_pt), ROOT::RVecF(*TauJets_MuonRM_eta),
-                      ROOT::RVecF(*TauJets_MuonRM_phi), ROOT::RVecF(*TauJets_MuonRM_m));
+        InvariantMass(ROOT::RVecF(*TauJets_MuonRM_pt->data(), TauJets_MuonRM_pt->size()),
+                      ROOT::RVecF(*TauJets_MuonRM_eta->data(), TauJets_MuonRM_eta->size()),
+                      ROOT::RVecF(*TauJets_MuonRM_m->data(), TauJets_MuonRM_m->size()),
+                      ROOT::RVecF(*TauJets_MuonRM_phi->data(), TauJets_MuonRM_phi->size()));
     histTauJets_MuonRM->Fill(invMassTauJets_MuonRM);
 
     brDiTauJets_pt->GetEntry(e);
@@ -385,8 +410,11 @@ void bmTreeReadspeed(std::string_view treePath, std::string_view treeName, bool 
     brDiTauJets_m->GetEntry(e);
     brDiTauJets_phi->GetEntry(e);
 
-    auto invMassDiTauJets = InvariantMass(ROOT::RVecF(*DiTauJets_pt), ROOT::RVecF(*DiTauJets_eta),
-                                          ROOT::RVecF(*DiTauJets_phi), ROOT::RVecF(*DiTauJets_m));
+    auto invMassDiTauJets =
+        InvariantMass(ROOT::RVecF(*DiTauJets_pt->data(), DiTauJets_pt->size()),
+                      ROOT::RVecF(*DiTauJets_eta->data(), DiTauJets_eta->size()),
+                      ROOT::RVecF(*DiTauJets_m->data(), DiTauJets_m->size()),
+                      ROOT::RVecF(*DiTauJets_phi->data(), DiTauJets_phi->size()));
     histDiTauJets->Fill(invMassDiTauJets);
 
     brDiTauJetsLowPt_pt->GetEntry(e);
@@ -395,8 +423,10 @@ void bmTreeReadspeed(std::string_view treePath, std::string_view treeName, bool 
     brDiTauJetsLowPt_phi->GetEntry(e);
 
     auto invMassDiTauJetsLowPt =
-        InvariantMass(ROOT::RVecF(*DiTauJetsLowPt_pt), ROOT::RVecF(*DiTauJetsLowPt_eta),
-                      ROOT::RVecF(*DiTauJetsLowPt_phi), ROOT::RVecF(*DiTauJetsLowPt_m));
+        InvariantMass(ROOT::RVecF(*DiTauJetsLowPt_pt->data(), DiTauJetsLowPt_pt->size()),
+                      ROOT::RVecF(*DiTauJetsLowPt_eta->data(), DiTauJetsLowPt_eta->size()),
+                      ROOT::RVecF(*DiTauJetsLowPt_m->data(), DiTauJetsLowPt_m->size()),
+                      ROOT::RVecF(*DiTauJetsLowPt_phi->data(), DiTauJetsLowPt_phi->size()));
     histDiTauJetsLowPt->Fill(invMassDiTauJetsLowPt);
 
     brTauNeutralParticleFlowObjects_pt->GetEntry(e);
@@ -405,10 +435,14 @@ void bmTreeReadspeed(std::string_view treePath, std::string_view treeName, bool 
     brTauNeutralParticleFlowObjects_phi->GetEntry(e);
 
     auto invMassTauNeutralParticleFlowObjects =
-        InvariantMass(ROOT::RVecF(*TauNeutralParticleFlowObjects_pt),
-                      ROOT::RVecF(*TauNeutralParticleFlowObjects_eta),
-                      ROOT::RVecF(*TauNeutralParticleFlowObjects_phi),
-                      ROOT::RVecF(*TauNeutralParticleFlowObjects_m));
+        InvariantMass(ROOT::RVecF(*TauNeutralParticleFlowObjects_pt->data(),
+                                  TauNeutralParticleFlowObjects_pt->size()),
+                      ROOT::RVecF(*TauNeutralParticleFlowObjects_eta->data(),
+                                  TauNeutralParticleFlowObjects_eta->size()),
+                      ROOT::RVecF(*TauNeutralParticleFlowObjects_m->data(),
+                                  TauNeutralParticleFlowObjects_m->size()),
+                      ROOT::RVecF(*TauNeutralParticleFlowObjects_phi->data(),
+                                  TauNeutralParticleFlowObjects_phi->size()));
     histTauNeutralParticleFlowObjects->Fill(invMassTauNeutralParticleFlowObjects);
 
     brTauNeutralParticleFlowObjects_MuonRM_pt->GetEntry(e);
@@ -417,15 +451,15 @@ void bmTreeReadspeed(std::string_view treePath, std::string_view treeName, bool 
     brTauNeutralParticleFlowObjects_MuonRM_phi->GetEntry(e);
 
     auto invMassTauNeutralParticleFlowObjects_MuonRM =
-        InvariantMass(ROOT::RVecF(*TauNeutralParticleFlowObjects_MuonRM_pt),
-                      ROOT::RVecF(*TauNeutralParticleFlowObjects_MuonRM_eta),
-                      ROOT::RVecF(*TauNeutralParticleFlowObjects_MuonRM_phi),
-                      ROOT::RVecF(*TauNeutralParticleFlowObjects_MuonRM_m));
+        InvariantMass(ROOT::RVecF(*TauNeutralParticleFlowObjects_MuonRM_pt->data(),
+                                  TauNeutralParticleFlowObjects_MuonRM_pt->size()),
+                      ROOT::RVecF(*TauNeutralParticleFlowObjects_MuonRM_eta->data(),
+                                  TauNeutralParticleFlowObjects_MuonRM_eta->size()),
+                      ROOT::RVecF(*TauNeutralParticleFlowObjects_MuonRM_m->data(),
+                                  TauNeutralParticleFlowObjects_MuonRM_m->size()),
+                      ROOT::RVecF(*TauNeutralParticleFlowObjects_MuonRM_phi->data(),
+                                  TauNeutralParticleFlowObjects_MuonRM_phi->size()));
     histTauNeutralParticleFlowObjects_MuonRM->Fill(invMassTauNeutralParticleFlowObjects_MuonRM);
-
-    if (verbose && e % 20000 == 0) {
-      std::cout << e << " events processed" << std::endl;
-    }
   }
 
   auto tEnd = std::chrono::steady_clock::now();
