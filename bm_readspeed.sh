@@ -27,9 +27,9 @@ function bm_cold_cache() {
 
         if [ "$storage_type" = "rntuple_mt" ]; then
             source_file=${SOURCE_DIR}/${phys_file_type}/DAOD_PHYS.rntuple.root~${compression}
-            results=$(bin/bm_readspeed -m -v -i $source_file -n $storage_name -s rntuple)
+            results=$(bin/bm_readspeed -r -m -v -i $source_file -n $storage_name -s rntuple)
         else
-            results=$(bin/bm_readspeed -v -i $source_file -n $storage_name -s $storage_type)
+            results=$(bin/bm_readspeed -r -v -i $source_file -n $storage_name -s $storage_type)
         fi
         echo "$results"
         echo "$results" >> $results_file
