@@ -1,25 +1,22 @@
 # ATLAS-BM
 
-Collection of benchmarks for ROOT's `TTree` and `RNTuple` in ATLAS `DAOD_PHYS/LITE`.
+Collection of benchmarks for ROOT's `TTree` and `RNTuple` in ATLAS `DAOD_PHYS(LITE)`.
 
 ## Environment setup
 
-All benchmarks must be done in an ATLAS Analysis release, e.g. on lxplus or with Docker (using the Athena VSCode devcontainer is highly recommended!).
+Currently, the benchmarks are ROOT-only and therefore do not require an ATLAS release. However, to prepare the data files, a release is required since we need access to the dictionaries. The recommended way to do so is with a VSCode devcontainer, for which a configuration file is provided.
 
-Since we require ROOT7, we need to use a nightly (or in some cases, a local build -- this setup is not yet documented here):
+Since we require ROOT7, we need to use a nightly LCG build:
 
 ```
 source /cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/x86_64/AtlasSetup/current/AtlasSetup/scripts/asetup.sh master--dev3LCG,latest,Athena
 ```
 
-To use docker (w/o VSCode devcontainers), run the following command to mount the current directory and CVMFS, enable X11 forwarding and open an interactive shell:
-```sh
-docker run --net host -i -t -v $(pwd):/workdir:rw -v /cvmfs:/cvmfs -v /tmp/.X11-unix:/tmp/.X11-unix -v /afs:/afs -e DISPLAY=$DISPLAY --name atlas atlas/centos7-atlasos-dev:latest-gcc11
-```
+Additionally, a patch to ROOT is required to take of dots in branch names which are currently not required in RNTuple. This patch can be found [here](https://github.com/enirolf/root/tree/athena-patches). TODO: document steps to build.
 
 ## General project structure
 
-This repository contains two main directories of interest for running benchmarks and analysing their results: `macros`, which contains the necessary ROOT macros for preparing the files as well as analysing and plotting the benchmark results and `benchmarks/`, which runs the benchmarks and saves their results. These results are by default saved in the `results/` directory (which will be created if it does not yet exist).
+Each type of benchmark has a separate directory with all the relevant code: `bm-size` and `bm-readspeed`. Additionally, the `bm-utils` directory provides some common functions and scripts. For each benchmark, a driver script is provided in the root of this repo.
 
 ### Building the benchmarks
 
@@ -36,21 +33,9 @@ cmake --build build
 ```
 The compiled binaries can be found in `bin/`.
 
-## Benchmarks
-### Size and compression
+## Benchmark DAODs
+Pregenerated DAODs can be found [here](https://cernbox.cern.ch/s/jRZWjRjSRJBjQKg). To generete them from scratch, run `bm-utils/write_trees.sh` (as a shell script) and `bm-utils/write_ntuples.C` (with ROOT). They must be run in this order! Make sure the file paths defined at the top of each macro are correct before running them, or adjust accordingly. Depending on your machine and the size of the source file, executing these macros might take a while, so don't hestitate to go grab a coffee.
 
-#### Generating DAODs with different compression settings
-There are two macros to achieve this: `write_trees.C` and `write_ntuples.C`. They must be run in this order! Make sure the file paths defined at the top of each macro are correct before running them, or adjust accordingly. Depending on your machine and the size of the source file, executing these macros might take a while (feel free to get a coffee).
+### Plotting the results
 
-#### Running the benchmarks
-
-Build the benchmarks using the instructions described above and run
-```sh
-./bin/bm_size
-```
-
-#### Analysing the benchmarks
-Run
-```sh
-root plot_size.C
-```
+Each benchmark directory contains a ROOT macro for producing plots. They need some manual tweaking of result paths etc., this is a work in progress.
