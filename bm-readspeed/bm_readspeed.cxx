@@ -1,5 +1,6 @@
 #include <ROOT/RDataFrame.hxx>
 #include <ROOT/RNTuple.hxx>
+#include <ROOT/RNTupleDS.hxx>
 #include <ROOT/RNTupleModel.hxx>
 #include <ROOT/RNTupleView.hxx>
 #include <ROOT/RVec.hxx>
@@ -429,12 +430,53 @@ void bmTreeReadspeed(std::string_view treePath, std::string_view treeName, bool 
     ps->Print();
 }
 
-void bmRDFReadspeed(std::string_view storePath, std::string_view storeName, bool isNTuple) {
-  std::cout << "TODO" << std::endl;
+void bmRDFReadspeed(ROOT::RDataFrame &rdf, bool isNTuple) {
+  const std::array<std::string_view, 8> containers = {"Electrons",
+                                                      "Photons",
+                                                      "TauJets",
+                                                      "TauJets_MuonRM",
+                                                      "DiTauJets",
+                                                      "DiTauJetsLowPt",
+                                                      "TauNeutralParticleFlowObjects",
+                                                      "TauNeutralParticleFlowObjects_MuonRM"};
+  const std::string sep = isNTuple ? ":" : ".";
+  auto tInit = std::chrono::steady_clock::now();
+  std::chrono::steady_clock::time_point tsFirst;
+  bool tsFirstSet = false;
+
+  auto rdfTiming = rdf.Define("TIMING",
+                              [&tsFirst, &tsFirstSet]() {
+                                if (!tsFirstSet)
+                                  tsFirst = std::chrono::steady_clock::now();
+                                tsFirstSet = true;
+                                return tsFirstSet;
+                              })
+                       .Filter([](bool b) { return b; }, {"TIMING"});
+
+  for (const auto c : containers) {
+    rdfTiming = rdfTiming.Define(
+        "invMass" + std::string(c), ROOT::VecOps::InvariantMass<float>,
+        {std::string(c) + "AuxDyn" + sep + "pt", std::string(c) + "AuxDyn" + sep + "eta",
+         std::string(c) + "AuxDyn" + sep + "m", std::string(c) + "AuxDyn" + sep + "phi"});
+  }
+
+  auto tStart = std::chrono::steady_clock::now();
+
+  for (const auto c : containers) {
+    auto histInvMass = rdfTiming.Histo1D<float>({"histInvMas", "histInvMas", 128, 0, 2000000},
+                                                "invMass" + std::string(c));
+    *histInvMass;
+  }
+
+  auto tEnd = std::chrono::steady_clock::now();
+  auto tRuntimeInit = std::chrono::duration_cast<std::chrono::microseconds>(tStart - tInit).count();
+  auto tRuntimeLoop = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count();
+
+  std::cout << " " << tRuntimeInit << " " << tRuntimeLoop << std::endl;
 }
 
 static void printUsage(std::string_view prog) {
-  std::cout << prog << " [-v -m -h] -i INPUT_PATH -n STORE_NAME -s (ttree|rntuple)" << std::endl;
+  std::cout << prog << " [-v -m -r -h] -i INPUT_PATH -n STORE_NAME -s (ttree|rntuple)" << std::endl;
 }
 
 int main(int argc, char **argv) {
@@ -443,12 +485,12 @@ int main(int argc, char **argv) {
   gErrorIgnoreLevel = kError;
 
   std::string inputPath, storeName;
-  bool checkNTuple = false;
+  bool isNTuple = false;
   bool useRDF = false;
   bool verbose = false;
 
   int c;
-  while ((c = getopt(argc, argv, "hmvi:n:s:")) != -1) {
+  while ((c = getopt(argc, argv, "hmvri:n:s:")) != -1) {
     switch (c) {
     case 'h':
       printUsage(argv[0]);
@@ -461,12 +503,7 @@ int main(int argc, char **argv) {
       break;
     case 's':
       if (strcmp(optarg, "rntuple") == 0) {
-        checkNTuple = true;
-      } else if (strcmp(optarg, "rdf+ttree") == 0) {
-        useRDF = true;
-      } else if (strcmp(optarg, "rdf+rntuple") == 0) {
-        useRDF = true;
-        checkNTuple = true;
+        isNTuple = true;
       } else if (strcmp(optarg, "ttree") != 0) {
         std::cerr << "Unknown mode: " << optarg << std::endl;
         return 1;
@@ -477,6 +514,9 @@ int main(int argc, char **argv) {
       break;
     case 'v':
       verbose = true;
+      break;
+    case 'r':
+      useRDF = true;
       break;
     default:
       printUsage(argv[0]);
@@ -497,8 +537,14 @@ int main(int argc, char **argv) {
   }
 
   if (useRDF) {
-    bmRDFReadspeed(inputPath, storeName, checkNTuple);
-  } else if (checkNTuple) {
+    if (isNTuple) {
+      ROOT::RDataFrame rdf = ROOT::RDF::Experimental::FromRNTuple(storeName, inputPath);
+      bmRDFReadspeed(rdf, isNTuple);
+    } else {
+      ROOT::RDataFrame rdf(storeName, inputPath);
+      bmRDFReadspeed(rdf, isNTuple);
+    }
+  } else if (isNTuple) {
     bmNTupleReadspeed(inputPath, storeName, verbose);
   } else {
     bmTreeReadspeed(inputPath, storeName, verbose);
