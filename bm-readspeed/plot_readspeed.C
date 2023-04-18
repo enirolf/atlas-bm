@@ -750,19 +750,235 @@ void makeReadRateOverviewPlot(std::string_view resultsPathBase, std::string_view
   }
 }
 
+void makeRDFOverviewPlot(std::string_view resultsPathBase, std::string_view medium,
+                         std::string_view physFileType = "data", bool save = true) {
+  //--------------------------------------------------------------------------//
+  // PREPARE THE GRAPHS                                                       //
+  //--------------------------------------------------------------------------//
+  float initTime, loopTime;
+
+  float nEvents = physFileType == "data" ? 209062 : 180000;
+
+  // compression -> storage format -> TGraphErrors*
+  std::map<int, std::map<std::string, TGraphErrors *>> speedGraphMap;
+  // compression -> storage format -> (mean, error)
+  std::map<int, std::map<std::string, std::pair<float, float>>> dataMap;
+  // compression -> TGraphErrors*
+  std::map<int, TGraphErrors *> ratioGraphMap;
+
+  for (const int compression : {0, 505, 201, 207}) {
+    for (const std::string format :
+         {"ttree", "rntuple", "rntuple_mt", "rntuple_uring", "rntuple_mt_uring"}) {
+      std::string resultsFilePath = std::string(resultsPathBase) + "/" + format +
+                                    "/readspeed_cold_" + std::string(physFileType) + "_" +
+                                    std::to_string(compression) + ".txt";
+
+      std::ifstream resultsFile(resultsFilePath);
+
+      std::vector<float> loopTimes;
+      while (resultsFile >> initTime >> loopTime) {
+        float seconds = loopTime / 1e6;
+        loopTimes.push_back(seconds);
+      }
+
+      RVec<float> loopTimeVec(loopTimes.begin(), loopTimes.end());
+      float secondsMean = Mean(loopTimeVec);
+      float secondsErr = StdErr(loopTimeVec);
+      float throughputMean = nEvents / secondsMean;
+      float throughputMax = nEvents / (secondsMean - secondsErr);
+      float throughputMin = nEvents / (secondsMean + secondsErr);
+      float throughputErr = (throughputMax - throughputMin) / 2.;
+
+      dataMap[compression][format] = std::pair<float, float>(throughputMean, throughputErr);
+    }
+    dataMap[compression]["fill"] = std::pair<float, float>(0., 0.);
+  }
+
+  float maxLoopTime = 0.;
+  for (const auto &[compression, formats] : dataMap) {
+    for (const auto &[format, data] : formats) {
+      auto g = new TGraphErrors();
+      int x;
+      if (format == "filler")
+        x = 0;
+      if (format == "ttree")
+        x = 1;
+      else if (format == "rntuple")
+        x = 2;
+      else if (format == "rntuple_mt")
+        x = 3;
+      else if (format == "rntuple_uring")
+        x = 4;
+      else if (format == "rntuple_mt_uring")
+        x = 5;
+
+      switch (compression) {
+      case 0:
+        x += 0;
+        break;
+      case 505:
+        x += 6;
+        break;
+      case 201:
+        x += 12;
+        break;
+      case 207:
+        x += 18;
+        break;
+      }
+      g->SetPoint(0, x + 0, data.first);
+      g->SetPoint(1, x + 2, -1);
+      g->SetPointError(0, 0, data.second);
+      speedGraphMap[compression][format] = g;
+      maxLoopTime = std::max(maxLoopTime, data.first + data.second);
+    }
+  }
+
+  //--------------------------------------------------------------------------//
+  // SETUP THE CANVAS                                                         //
+  //--------------------------------------------------------------------------//
+
+  TCanvas *canvas = new TCanvas(
+      Form("canvas_readrate_%s_%s", std::string(medium).c_str(), std::string(physFileType).c_str()),
+      "canvas", 1200, 600);
+  canvas->cd();
+
+  // Title pad
+  auto padTitle = new TPad("padTitle", "padTitle", 0.0, 0.93, 1.0, 0.97);
+  padTitle->SetTopMargin(0.02);
+  padTitle->SetBottomMargin(0.01);
+  padTitle->SetLeftMargin(0.1);
+  padTitle->SetRightMargin(0.005);
+  padTitle->SetFillStyle(4000);
+  padTitle->SetFrameFillStyle(4000);
+  padTitle->Draw();
+  canvas->cd();
+
+  // TTree vs RNTuple read throughput speed
+  auto padSpeed = new TPad("padSpeed", "padSpeed", 0.0, 0.03, 1.0, 0.92);
+  padSpeed->SetTopMargin(0.055);
+  padSpeed->SetBottomMargin(0.08);
+  padSpeed->SetLeftMargin(0.08);
+  padSpeed->SetRightMargin(0.04);
+  padSpeed->SetFillStyle(4000);
+  padSpeed->SetFrameFillStyle(4000);
+  padSpeed->Draw();
+  canvas->cd();
+
+  //--------------------------------------------------------------------------//
+  // DRAW THE TITLE                                                           //
+  //--------------------------------------------------------------------------//
+
+  padTitle->cd();
+  auto padCenter = padTitle->GetBBoxCenter();
+  auto title = new TText(0.5, 0.5,
+                         Form("TTree vs. RNTuple %s RDataFrame throughput (%s)",
+                              std::string(medium).c_str(), std::string(physFileType).c_str()));
+  title->SetBBoxCenter(padTitle->GetBBoxCenter());
+  title->SetTextColor(kBlack);
+  title->SetTextSize(1.00);
+  title->SetTextAlign(23);
+  title->Draw();
+
+  //--------------------------------------------------------------------------//
+  // DRAW THE MAIN GRAPH                                                      //
+  //--------------------------------------------------------------------------//
+
+  TH1F *helperSpeed = new TH1F("", "", 24, 0, 24);
+  helperSpeed->GetXaxis()->SetTickSize(0);
+  helperSpeed->GetXaxis()->SetNdivisions(25);
+  helperSpeed->GetXaxis()->SetLabelOffset(0.01);
+  helperSpeed->GetXaxis()->SetTitleSize(0.12);
+  helperSpeed->GetYaxis()->SetTitle("Events / s");
+  helperSpeed->GetYaxis()->SetTickSize(0.01);
+  helperSpeed->GetYaxis()->SetLabelSize(0.045);
+  helperSpeed->GetYaxis()->SetTitleSize(0.05);
+  helperSpeed->GetYaxis()->SetTitleOffset(0.725);
+  helperSpeed->SetMinimum(0);
+  helperSpeed->SetMaximum(maxLoopTime * 1.25);
+
+  for (int i = 0; i <= helperSpeed->GetXaxis()->GetNlabels(); i++) {
+    if (i == 4) {
+      helperSpeed->GetXaxis()->ChangeLabel(i, -1, 0.04, 21, -1, -1, "no compression");
+    } else if (i == 10) {
+      helperSpeed->GetXaxis()->ChangeLabel(i, -1, 0.04, 21, -1, -1, "zstd");
+    } else if (i == 16) {
+      helperSpeed->GetXaxis()->ChangeLabel(i, -1, 0.04, 21, -1, -1, "lzma (lvl 1)");
+    } else if (i == 22) {
+      helperSpeed->GetXaxis()->ChangeLabel(i, -1, 0.04, 21, -1, -1, "lzma (lvl 7)");
+    } else {
+      helperSpeed->GetXaxis()->ChangeLabel(i, -1, 0);
+    }
+  }
+
+  padSpeed->cd();
+  gPad->SetGridy();
+
+  helperSpeed->Draw();
+
+  for (const auto &[compression, formats] : speedGraphMap) {
+    for (const auto &[format, graph] : formats) {
+      graph->SetLineColor(12);
+      graph->SetMarkerColor(12);
+      graph->SetFillColor(colors.at(format));
+      graph->SetFillStyle(styles.at(format));
+      graph->SetLineWidth(2);
+      graph->Draw("B1");
+      graph->Draw("P");
+    }
+  }
+
+  for (unsigned i = 6; i < 24; i += 6) {
+    TLine *line = new TLine(i, 0, i, maxLoopTime * 1.25);
+    line->SetLineColor(kBlack);
+    line->SetLineStyle(3);
+    line->SetLineWidth(1);
+    line->Draw();
+  }
+
+  TLegend *leg = new TLegend(0.75, 0.7, 0.955, 0.935);
+  leg->AddEntry(speedGraphMap[505]["ttree"], "TTree", "F");
+  leg->AddEntry(speedGraphMap[505]["rntuple"], "RNTuple", "F");
+  leg->AddEntry(speedGraphMap[505]["rntuple_mt"], "RNTuple (w/ decomp. offloading/MT EL)", "F");
+  leg->AddEntry(speedGraphMap[505]["rntuple_uring"], "RNTuple (w/ liburing)", "F");
+  leg->AddEntry(speedGraphMap[505]["rntuple_mt_uring"],
+                "RNTuple (w/ decomp. offloading/MT EL + liburing)", "F");
+  leg->SetNColumns(1);
+  leg->SetMargin(0.15);
+  leg->Draw();
+
+  TText l;
+  l.SetTextSize(0.025);
+  l.SetTextAlign(13);
+  l.DrawTextNDC(0.918, 0.685, "95% CL");
+
+  //--------------------------------------------------------------------------//
+  // SAVE THE PLOT                                                            //
+  //--------------------------------------------------------------------------//
+
+  if (save) {
+    canvas->Print(Form("figures/rdf_overview_%s_%s.pdf", std::string(medium).c_str(),
+                       std::string(physFileType).c_str()));
+    canvas->Print(Form("figures/rdf_overview_%s_%s.png", std::string(medium).c_str(),
+                       std::string(physFileType).c_str()));
+  }
+}
+
 void plot_readspeed() {
   SetStyle();
   // makePlot("results/ssd", "SSD", "data", false);
   // makePlot("results/ssd", "SSD", "mc", false);
   // makePlot("results/ssd_mt", "SSD+MT", "data", false);
   // makePlot("results/ssd_mt", "SSD+MT", "mc", false);
-  makeTimeOverviewPlot("results/ssd_verbose", "SSD", "data", true);
-  makeTimeOverviewPlot("results/ssd_verbose", "SSD", "mc", true);
-  makeReadRateOverviewPlot("results/ssd_verbose", "SSD", "data", true);
-  makeReadRateOverviewPlot("results/ssd_verbose", "SSD", "mc", true);
+  // makeTimeOverviewPlot("results/ssd_verbose", "SSD", "data", true);
+  // makeTimeOverviewPlot("results/ssd_verbose", "SSD", "mc", true);
+  // makeReadRateOverviewPlot("results/ssd_verbose", "SSD", "data", true);
+  // makeReadRateOverviewPlot("results/ssd_verbose", "SSD", "mc", true);
 
-  makeTimeOverviewPlot("results/hdd_verbose", "HDD", "data", true);
-  makeTimeOverviewPlot("results/hdd_verbose", "HDD", "mc", true);
-  makeReadRateOverviewPlot("results/hdd_verbose", "HDD", "data", true);
-  makeReadRateOverviewPlot("results/hdd_verbose", "HDD", "mc", true);
+  // makeTimeOverviewPlot("results/hdd_verbose", "HDD", "data", true);
+  // makeTimeOverviewPlot("results/hdd_verbose", "HDD", "mc", true);
+  // makeReadRateOverviewPlot("results/hdd_verbose", "HDD", "data", true);
+  // makeReadRateOverviewPlot("results/hdd_verbose", "HDD", "mc", true);
+
+  makeRDFOverviewPlot("results/ssd_rdf", "SSD", "data", true);
 }
