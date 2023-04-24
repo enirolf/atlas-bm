@@ -15,510 +15,228 @@
 
 using namespace ROOT::VecOps;
 
-void makePlot(std::string_view resultsPathBase, std::string_view medium,
-              std::string_view physFileType = "data", bool save = true) {
+struct ReadSpeedData {
+  TGraphErrors *eventThroughputGraph;
+  float eventThroughputMean, eventThroughputErr;
+
+  TGraphErrors *byteThroughputGraph;
+  float byteThroughputMean, byteThroughputErr;
+};
+
+void makeOverviewPlot(std::string_view resultsPathBase, std::string_view medium,
+                      std::string_view physFileType = "data", bool save = true) {
   //--------------------------------------------------------------------------//
   // PREPARE THE GRAPHS                                                       //
   //--------------------------------------------------------------------------//
-  float nEvents;
-  float initTime;
-  float loopTime;
+  float nEvents = (physFileType == "data" ? 209062 : 180000) * 8; // TODO add to results file
+  float eventLoopTime;
+  float byteReadRate;
 
-  // compression -> storage format -> TGraphErrors*
-  std::map<int, std::map<std::string, TGraphErrors *>> speedGraphMap;
-  // compression -> storage format -> (mean, error)
-  std::map<int, std::map<std::string, std::pair<float, float>>> dataMap;
-  // compression -> TGraphErrors*
-  std::map<int, TGraphErrors *> ratioGraphMap;
-
-  float maxThroughput = 0.;
-  for (const int compression : {0, 505, 201, 207}) {
-    for (const std::string format : {"ttree", "rntuple"}) {
-
-      std::string resultsFilePath = std::string(resultsPathBase) + "/readspeed_cold_" + format +
-                                    "_" + std::string(physFileType) + "_" +
-                                    std::to_string(compression) + ".txt";
-
-      std::ifstream resultsFile(resultsFilePath);
-      std::vector<float> loopTimes;
-
-      while (resultsFile >> nEvents >> initTime >> loopTime) {
-        float seconds = loopTime / 1e6;
-        loopTimes.push_back(seconds);
-      }
-
-      RVec<float> loopTimeVec(loopTimes.begin(), loopTimes.end());
-      float secondsMean = Mean(loopTimeVec);
-      float secondsErr = StdErr(loopTimeVec);
-      float throughputMean = nEvents / secondsMean;
-      float throughputMax = nEvents / (secondsMean - secondsErr);
-      float throughputMin = nEvents / (secondsMean + secondsErr);
-      float throughputErr = (throughputMax - throughputMin) / 2.;
-
-      dataMap[compression][format] = std::pair<float, float>(throughputMean, throughputErr);
-
-      auto g = new TGraphErrors();
-      int x = (format == "rntuple");
-      switch (compression) {
-      case 0:
-        x += 0;
-        break;
-      case 505:
-        x += 2;
-        break;
-      case 201:
-        x += 4;
-        break;
-      case 207:
-        x += 6;
-        break;
-      }
-      g->SetPoint(0, x + 0.5, throughputMean);
-      g->SetPoint(1, x + 2.25, -1);
-      g->SetPointError(0, 0, throughputErr);
-      speedGraphMap[compression][format] = g;
-      maxThroughput = std::max(maxThroughput, throughputMean + throughputErr);
-    }
-  }
-
-  float maxRatio = 0.;
-  for (const auto &[compression, data] : dataMap) {
-    float rntupleMean = data.at("rntuple").first;
-    float rntupleErr = data.at("rntuple").second;
-    float ttreeMean = data.at("ttree").first;
-    float ttreeErr = data.at("ttree").second;
-    float ratioMean = rntupleMean / ttreeMean;
-    float ratioErr = ratioMean * std::sqrt(std::pow(ttreeErr, 2) / std::pow(ttreeMean, 2) +
-                                           std::pow(rntupleErr, 2) / std::pow(rntupleMean, 2));
-
-    maxRatio = std::max(maxRatio, ratioMean + ratioErr);
-
-    auto g = new TGraphErrors();
-    int x;
-    switch (compression) {
-    case 0:
-      x = 0;
-      break;
-    case 505:
-      x = 1;
-      break;
-    case 201:
-      x = 2;
-      break;
-    case 207:
-      x = 3;
-      break;
-    }
-    g->SetPoint(0, 2 * x + 0, -1);
-    g->SetPoint(1, 2 * x + 2, ratioMean);
-    g->SetPoint(2, 2 * x + 4, -1);
-    g->SetPointError(1, 0, ratioErr);
-    ratioGraphMap[compression] = g;
-  }
-
-  //--------------------------------------------------------------------------//
-  // SETUP THE CANVAS                                                         //
-  //--------------------------------------------------------------------------//
-
-  TCanvas *canvas = new TCanvas(
-      Form("canvas__%s_%s", std::string(medium).c_str(), std::string(physFileType).c_str()),
-      "canvas");
-  canvas->cd();
-
-  // Title pad
-  auto padTitle = new TPad("padTitle", "padTitle", 0.0, 0.9, 1.0, 0.95);
-  padTitle->SetTopMargin(0.08);
-  padTitle->SetBottomMargin(0.03);
-  padTitle->SetLeftMargin(0.1);
-  padTitle->SetRightMargin(0.005);
-  padTitle->Draw();
-  canvas->cd();
-
-  // TTree vs RNTuple read throughput speed
-  auto padSpeed = new TPad("padSpeed", "padSpeed", 0., 0.39, 1.0, 0.89);
-  padSpeed->SetTopMargin(0.08);
-  padSpeed->SetBottomMargin(0.03);
-  padSpeed->SetLeftMargin(0.1);
-  padSpeed->SetRightMargin(0.055);
-  padSpeed->Draw();
-  canvas->cd();
-
-  // TTree vs RNTuple read throughput ratio
-  auto padRatio = new TPad("padRatio", "padRatio", 0., 0.09, 1.0, 0.38);
-  padRatio->SetTopMargin(0.05);
-  padRatio->SetBottomMargin(0.26);
-  padRatio->SetLeftMargin(0.1);
-  padRatio->SetRightMargin(0.055);
-  padRatio->Draw();
-  canvas->cd();
-
-  // Legend
-  auto padLegend = new TPad("padLegend", "padLegend", 0.0, 0.03, 1.0, 0.08);
-  padLegend->SetTopMargin(0.01);
-  padLegend->SetBottomMargin(0.26);
-  padLegend->SetLeftMargin(0.1);
-  padLegend->SetRightMargin(0.055);
-  padLegend->Draw();
-  canvas->cd();
-
-  //--------------------------------------------------------------------------//
-  // DRAW THE TITLE                                                           //
-  //--------------------------------------------------------------------------//
-
-  padTitle->cd();
-  auto padCenter = padTitle->GetBBoxCenter();
-  auto title = new TText(0.5, 0.5,
-                         Form("TTree vs. RNTuple %s READ throughput (%s)",
-                              std::string(medium).c_str(), std::string(physFileType).c_str()));
-  title->SetBBoxCenter(padTitle->GetBBoxCenter());
-  title->SetTextColor(kBlack);
-  title->SetTextSize(.9);
-  title->SetTextAlign(23);
-  title->Draw();
-
-  //--------------------------------------------------------------------------//
-  // DRAW THE MAIN GRAPH                                                      //
-  //--------------------------------------------------------------------------//
-
-  TH1F *helperSpeed = new TH1F("", "", 8, 0, 8);
-  helperSpeed->GetXaxis()->SetTitle("");
-  helperSpeed->GetXaxis()->SetNdivisions(0);
-  helperSpeed->GetXaxis()->SetLabelSize(0);
-  helperSpeed->GetXaxis()->SetTickSize(0);
-  helperSpeed->GetYaxis()->SetTitle("Events / s");
-  helperSpeed->GetYaxis()->SetTickSize(0.01);
-  helperSpeed->GetYaxis()->SetLabelSize(0.07);
-  helperSpeed->GetYaxis()->SetTitleSize(0.07);
-  helperSpeed->GetYaxis()->SetTitleOffset(0.725);
-  helperSpeed->SetMinimum(0);
-  helperSpeed->SetMaximum(maxThroughput * 1.1);
-
-  padSpeed->cd();
-  gPad->SetGridy();
-
-  helperSpeed->Draw();
-
-  for (const auto &[compression, formats] : speedGraphMap) {
-    for (const auto &[format, graph] : formats) {
-      graph->SetLineColor(12);
-      graph->SetMarkerColor(12);
-      graph->SetFillColor(colors.at(format));
-      graph->SetLineWidth(2);
-      graph->Draw("B1");
-      graph->Draw("P");
-    }
-  }
-
-  for (unsigned i = 2; i < 8; i += 2) {
-    TLine *line = new TLine(i, 0, i, maxThroughput * 1.1);
-    line->SetLineColor(kBlack);
-    line->SetLineStyle(3);
-    line->SetLineWidth(1);
-    line->Draw();
-  }
-
-  //--------------------------------------------------------------------------//
-  // DRAW THE RATIO GRAPH                                                     //
-  //--------------------------------------------------------------------------//
-
-  TH1F *helperRatio = new TH1F("", "", 8, 1, 9);
-  helperRatio->SetMinimum(0);
-  helperRatio->SetMaximum(maxRatio * 1.1);
-  helperRatio->GetXaxis()->SetTickSize(0);
-  helperRatio->GetXaxis()->SetNdivisions(8);
-  helperRatio->GetXaxis()->SetLabelSize(0.16);
-  helperRatio->GetXaxis()->SetLabelOffset(0.01);
-  helperRatio->GetXaxis()->SetTitleSize(0.12);
-  helperRatio->GetYaxis()->SetTitle("RNTuple / TTree");
-  helperRatio->GetYaxis()->SetTickSize(0.005);
-  helperRatio->GetYaxis()->SetNdivisions(8);
-  helperRatio->GetYaxis()->SetLabelSize(0.11);
-  helperRatio->GetYaxis()->SetTitleSize(0.11);
-  helperRatio->GetYaxis()->SetTitleOffset(0.45);
-
-  for (int i = 0; i <= helperRatio->GetXaxis()->GetNlabels(); i++) {
-    if (i == 2) {
-      helperRatio->GetXaxis()->ChangeLabel(i, -1, 0.095, -1, -1, -1, "no compression");
-    } else if (i == 4) {
-      helperRatio->GetXaxis()->ChangeLabel(i, -1, 0.095, -1, -1, -1, "zstd");
-    } else if (i == 6) {
-      helperRatio->GetXaxis()->ChangeLabel(i, -1, 0.095, -1, -1, -1, "lzma (lvl 1)");
-    } else if (i == 8) {
-      helperRatio->GetXaxis()->ChangeLabel(i, -1, 0.095, -1, -1, -1, "lzma (lvl 7)");
-    } else {
-      helperRatio->GetXaxis()->ChangeLabel(i, -1, 0);
-    }
-  }
-
-  padRatio->cd();
-  gPad->SetGridy();
-
-  helperRatio->Draw();
-
-  for (const auto &[compression, graph] : ratioGraphMap) {
-    graph->SetLineColor(12);
-    graph->SetMarkerColor(12);
-    graph->SetFillColor(kPlotGreen);
-    graph->SetFillStyle(1001);
-    graph->SetLineWidth(2);
-    graph->Draw("B1");
-    graph->Draw("P");
-
-    double x, y, err;
-    graph->GetPoint(1, x, y);
-    err = graph->GetErrorY(1);
-    std::ostringstream val;
-    val.precision(1);
-    val << "#times" << std::fixed << y;
-    val << " #pm ";
-    val << std::fixed << err;
-
-    TLatex tval;
-    tval.SetTextSize(0.08);
-    tval.SetTextAlign(23);
-    tval.DrawLatex(x, y * 0.8, val.str().c_str());
-  }
-
-  TLine *lineOne = new TLine(1, 1, 9, 1);
-  lineOne->SetLineColor(kBlack);
-  lineOne->SetLineStyle(1);
-  lineOne->SetLineWidth(1);
-  lineOne->Draw();
-
-  for (unsigned i = 2; i < 8; i += 2) {
-    TLine *line = new TLine(i + 1, 0, i + 1, maxRatio * 1.1);
-    line->SetLineColor(kBlack);
-    line->SetLineStyle(3);
-    line->SetLineWidth(1);
-    line->Draw();
-  }
-
-  //--------------------------------------------------------------------------//
-  // DRAW THE LEGEND                                                          //
-  //--------------------------------------------------------------------------//
-
-  padLegend->cd();
-
-  TLegend *leg = new TLegend(0.2, 0.1, 0.8, 0.9);
-  leg->AddEntry(speedGraphMap[505]["ttree"], "TTree", "F");
-  leg->AddEntry(speedGraphMap[505]["rntuple"], "RNTuple", "F");
-  leg->AddEntry(ratioGraphMap[505], "RNTuple / TTree throughput ratio", "F");
-  leg->SetNColumns(3);
-  leg->SetColumnSeparation(.05);
-  leg->SetBorderSize(0);
-  leg->SetTextSize(0.65);
-  leg->Draw();
-
-  TText l;
-  l.SetTextSize(0.04);
-  l.SetTextAlign(13);
-  l.DrawTextNDC(0.175, 0.68 - 0.0075, "95% CL");
-
-  //--------------------------------------------------------------------------//
-  // SAVE THE PLOT                                                            //
-  //--------------------------------------------------------------------------//
-
-  if (save) {
-    canvas->Print(Form("figures/readspeed_%s_%s.pdf", std::string(medium).c_str(),
-                       std::string(physFileType).c_str()));
-    canvas->Print(Form("figures/readspeed_%s_%s.png", std::string(medium).c_str(),
-                       std::string(physFileType).c_str()));
-  }
-}
-
-void makeTimeOverviewPlot(std::string_view resultsPathBase, std::string_view medium,
-                          std::string_view physFileType = "data", bool save = true) {
-  //--------------------------------------------------------------------------//
-  // PREPARE THE GRAPHS                                                       //
-  //--------------------------------------------------------------------------//
-  float nEvents;
-  float initTime;
-  float loopTime;
-
-  // compression -> storage format -> TGraphErrors*
-  std::map<int, std::map<std::string, TGraphErrors *>> speedGraphMap;
-  // compression -> storage format -> (mean, error)
-  std::map<int, std::map<std::string, std::pair<float, float>>> dataMap;
-  // compression -> TGraphErrors*
-  std::map<int, TGraphErrors *> ratioGraphMap;
+  // compression -> storage format -> readspeed data
+  std::map<int, std::map<std::string, ReadSpeedData>> readSpeedData;
 
   for (const int compression : {0, 505, 201, 207}) {
-    for (const std::string format :
-         {"ttree", "rntuple", "rntuple_mt", "rntuple_uring", "rntuple_mt_uring"}) {
+    for (const std::string format : {"ttree", "rntuple", "rntuple_uring"}) {
       std::string resultsFilePath = std::string(resultsPathBase) + "/" + format +
                                     "/readspeed_cold_" + std::string(physFileType) + "_" +
-                                    std::to_string(compression) + ".txt~clock_times";
+                                    std::to_string(compression) + ".data";
 
       std::ifstream resultsFile(resultsFilePath);
 
-      std::vector<float> loopTimes;
-      while (resultsFile >> nEvents >> initTime >> loopTime) {
-        float seconds = loopTime / 1e6;
-        loopTimes.push_back(seconds);
+      std::vector<float> eventLoopTimes;
+      std::vector<float> byteReadRates;
+
+      while (resultsFile >> eventLoopTime >> byteReadRate) {
+        eventLoopTimes.push_back(eventLoopTime);
+        byteReadRates.push_back(byteReadRate);
       }
 
-      RVec<float> loopTimeVec(loopTimes.begin(), loopTimes.end());
-      float secondsMean = Mean(loopTimeVec);
-      float secondsErr = StdErr(loopTimeVec);
-      float throughputMean = nEvents / secondsMean;
-      float throughputMax = nEvents / (secondsMean - secondsErr);
-      float throughputMin = nEvents / (secondsMean + secondsErr);
-      float throughputErr = (throughputMax - throughputMin) / 2.;
+      RVec<float> eventLoopTimeVec(eventLoopTimes.begin(), eventLoopTimes.end());
+      float eventLoopTimeMean = Mean(eventLoopTimeVec);
+      float eventLoopTimeErr = StdErr(eventLoopTimeVec);
+      float eventThroughputMean = nEvents / eventLoopTimeMean;
+      float eventThroughputMax = nEvents / (eventLoopTimeMean - eventLoopTimeErr);
+      float eventThroughputMin = nEvents / (eventLoopTimeMean + eventLoopTimeErr);
+      float eventThroughputErr = (eventThroughputMax - eventThroughputMin) / 2.;
 
-      dataMap[compression][format] = std::pair<float, float>(throughputMean, throughputErr);
+      RVec<float> byteReadRateVec(byteReadRates.begin(), byteReadRates.end());
+      float byteThroughputMean = Mean(byteReadRateVec);
+      float byteThroughputErr = StdErr(byteReadRateVec);
+
+      readSpeedData[compression][format] =
+          ReadSpeedData{new TGraphErrors(), eventThroughputMean, eventThroughputErr,
+                        new TGraphErrors(), byteThroughputMean,  byteThroughputErr};
     }
-    dataMap[compression]["fill"] = std::pair<float, float>(0., 0.);
+
+    readSpeedData[compression]["fill"] =
+        ReadSpeedData{new TGraphErrors(), 0., 0., new TGraphErrors(), 0., 0.};
   }
 
-  float maxThroughput = 0.;
-  for (const auto &[compression, formats] : dataMap) {
+  float maxEventThroughput = 0.;
+  float maxByteThroughput = 0.;
+  for (const auto &[compression, formats] : readSpeedData) {
     for (const auto &[format, data] : formats) {
-      auto g = new TGraphErrors();
-      int x;
-      if (format == "filler")
-        x = 0;
-      if (format == "ttree")
-        x = 1;
-      else if (format == "rntuple")
-        x = 2;
-      else if (format == "rntuple_mt")
-        x = 3;
-      else if (format == "rntuple_uring")
-        x = 4;
-      else if (format == "rntuple_mt_uring")
-        x = 5;
-
-      switch (compression) {
-      case 0:
-        x += 0;
-        break;
-      case 505:
-        x += 6;
-        break;
-      case 201:
-        x += 12;
-        break;
-      case 207:
-        x += 18;
-        break;
+      if (format != "fill") {
+        std::cout << "Event throughput " << format << ", " << compression << " = "
+                  << data.eventThroughputMean << " +/- " << data.eventThroughputErr << std::endl;
+        std::cout << "Byte throughput " << format << ", " << compression << " = "
+                  << data.byteThroughputMean << " +/- " << data.byteThroughputErr << std::endl;
       }
-      g->SetPoint(0, x + 0, data.first);
-      g->SetPoint(1, x + 2, -1);
-      g->SetPointError(0, 0, data.second);
-      speedGraphMap[compression][format] = g;
-      maxThroughput = std::max(maxThroughput, data.first + data.second);
+
+      int x = getXVal(format, compression);
+
+      auto gEvent = data.eventThroughputGraph;
+      gEvent->SetPoint(0, x + 0, data.eventThroughputMean);
+      gEvent->SetPoint(1, x + 2, -1);
+      gEvent->SetPointError(0, 0, data.eventThroughputErr);
+      maxEventThroughput =
+          std::max(maxEventThroughput, data.eventThroughputMean + data.eventThroughputErr);
+
+      auto gByte = data.byteThroughputGraph;
+      gByte->SetPoint(0, x + 0, data.byteThroughputMean);
+      gByte->SetPoint(1, x + 2, -1);
+      gByte->SetPointError(0, 0, data.byteThroughputErr);
+      maxByteThroughput =
+          std::max(maxByteThroughput, data.byteThroughputMean + data.byteThroughputErr);
     }
   }
 
+  //==========================================================================//
+  // EVENT THROUGHPUT                                                         //
+  //==========================================================================//
+
   //--------------------------------------------------------------------------//
-  // SETUP THE CANVAS                                                         //
+  // SET UP THE CANVAS                                                        //
   //--------------------------------------------------------------------------//
 
-  TCanvas *canvas = new TCanvas(Form("canvas_readspeed_%s_%s", std::string(medium).c_str(),
-                                     std::string(physFileType).c_str()),
-                                "canvas", 1200, 600);
-  canvas->cd();
+  TCanvas *canvasEventThroughput =
+      new TCanvas("canvas_event_throughput", "canvas_event_throughput", 1200, 600);
+  canvasEventThroughput->cd();
 
   // Title pad
-  auto padTitle = new TPad("padTitle", "padTitle", 0.0, 0.93, 1.0, 0.97);
-  padTitle->SetTopMargin(0.02);
-  padTitle->SetBottomMargin(0.01);
-  padTitle->SetLeftMargin(0.1);
-  padTitle->SetRightMargin(0.005);
-  padTitle->SetFillStyle(4000);
-  padTitle->SetFrameFillStyle(4000);
-  padTitle->Draw();
-  canvas->cd();
+  auto padEventTitle = new TPad("padETitle", "padEventTitle", 0.0, 0.93, 1.0, 0.97);
+  padEventTitle->SetTopMargin(0.02);
+  padEventTitle->SetBottomMargin(0.01);
+  padEventTitle->SetLeftMargin(0.1);
+  padEventTitle->SetRightMargin(0.005);
+  padEventTitle->SetFillStyle(4000);
+  padEventTitle->SetFrameFillStyle(4000);
+  padEventTitle->Draw();
+  canvasEventThroughput->cd();
 
   // TTree vs RNTuple read throughput speed
-  auto padSpeed = new TPad("padSpeed", "padSpeed", 0.0, 0.03, 1.0, 0.92);
-  padSpeed->SetTopMargin(0.055);
-  padSpeed->SetBottomMargin(0.08);
-  padSpeed->SetLeftMargin(0.1);
-  padSpeed->SetRightMargin(0.04);
-  padSpeed->SetFillStyle(4000);
-  padSpeed->SetFrameFillStyle(4000);
-  padSpeed->Draw();
-  canvas->cd();
+  auto padEventThroughput =
+      new TPad("padEventThroughput", "padEventThroughput", 0.0, 0.03, 1.0, 0.92);
+  padEventThroughput->SetTopMargin(0.055);
+  padEventThroughput->SetBottomMargin(0.08);
+  padEventThroughput->SetLeftMargin(0.085);
+  padEventThroughput->SetRightMargin(0.04);
+  padEventThroughput->SetFillStyle(4000);
+  padEventThroughput->SetFrameFillStyle(4000);
+  padEventThroughput->Draw();
+  canvasEventThroughput->cd();
 
   //--------------------------------------------------------------------------//
   // DRAW THE TITLE                                                           //
   //--------------------------------------------------------------------------//
 
-  padTitle->cd();
-  auto padCenter = padTitle->GetBBoxCenter();
-  auto title = new TText(0.5, 0.5,
-                         Form("TTree vs. RNTuple %s read throughput (%s)",
-                              std::string(medium).c_str(), std::string(physFileType).c_str()));
-  title->SetBBoxCenter(padTitle->GetBBoxCenter());
-  title->SetTextColor(kBlack);
-  title->SetTextSize(1.00);
-  title->SetTextAlign(23);
-  title->Draw();
+  padEventTitle->cd();
+  // auto padEventCenter = padEventTitle->GetBBoxCenter();
+  auto eventTitle = new TText(
+      0.5, 0.5, Form("TTree vs. RNTuple event throughput (%s)", std::string(medium).c_str()));
+  eventTitle->SetBBoxCenter(padEventTitle->GetBBoxCenter());
+  eventTitle->SetTextColor(kBlack);
+  eventTitle->SetTextSize(1.00);
+  eventTitle->SetTextAlign(23);
+  eventTitle->Draw();
 
   //--------------------------------------------------------------------------//
   // DRAW THE MAIN GRAPH                                                      //
   //--------------------------------------------------------------------------//
+  maxEventThroughput *= 1.1;
 
-  TH1F *helperSpeed = new TH1F("", "", 24, 0, 24);
-  helperSpeed->GetXaxis()->SetTickSize(0);
-  helperSpeed->GetXaxis()->SetNdivisions(25);
-  helperSpeed->GetXaxis()->SetLabelOffset(0.01);
-  helperSpeed->GetXaxis()->SetTitleSize(0.12);
-  helperSpeed->GetYaxis()->SetTitle("Events / s");
-  helperSpeed->GetYaxis()->SetTickSize(0.01);
-  helperSpeed->GetYaxis()->SetLabelSize(0.045);
-  helperSpeed->GetYaxis()->SetTitleSize(0.05);
-  helperSpeed->GetYaxis()->SetTitleOffset(1.);
-  helperSpeed->SetMinimum(0);
-  helperSpeed->SetMaximum(maxThroughput * 1.5);
+  TH1F *helperEventThroughput = new TH1F("", "", 16, 0, 16);
+  helperEventThroughput->GetXaxis()->SetTickSize(0);
+  helperEventThroughput->GetXaxis()->SetNdivisions(25);
+  helperEventThroughput->GetXaxis()->SetLabelOffset(0.01);
+  helperEventThroughput->GetYaxis()->SetTickSize(0.01);
+  helperEventThroughput->GetYaxis()->SetLabelSize(0.0375);
+  helperEventThroughput->GetYaxis()->SetTitle("Events / s");
+  helperEventThroughput->GetYaxis()->SetTitleSize(0.045);
+  helperEventThroughput->GetYaxis()->SetTitleOffset(0.85);
+  helperEventThroughput->SetMinimum(0);
+  helperEventThroughput->SetMaximum(maxEventThroughput);
 
-  for (int i = 0; i <= helperSpeed->GetXaxis()->GetNlabels(); i++) {
-    if (i == 4) {
-      helperSpeed->GetXaxis()->ChangeLabel(i, -1, 0.04, 21, -1, -1, "no compression");
-    } else if (i == 10) {
-      helperSpeed->GetXaxis()->ChangeLabel(i, -1, 0.04, 21, -1, -1, "zstd");
-    } else if (i == 16) {
-      helperSpeed->GetXaxis()->ChangeLabel(i, -1, 0.04, 21, -1, -1, "lzma (lvl 1)");
-    } else if (i == 22) {
-      helperSpeed->GetXaxis()->ChangeLabel(i, -1, 0.04, 21, -1, -1, "lzma (lvl 7)");
+  int nBins = helperEventThroughput->GetXaxis()->GetNbins();
+  int binInterval = nBins / readSpeedData.size();
+  int binCenter = binInterval - 1;
+
+  for (int i = 0; i <= nBins + 1; i++) {
+    if (i == binCenter) {
+      helperEventThroughput->GetXaxis()->ChangeLabel(i, -1, 0.035, 21, -1, -1, "no compression");
+    } else if (i == binCenter + binInterval) {
+      helperEventThroughput->GetXaxis()->ChangeLabel(i, -1, 0.035, 21, -1, -1, "zstd");
+    } else if (i == binCenter + 2 * binInterval) {
+      helperEventThroughput->GetXaxis()->ChangeLabel(i, -1, 0.035, 21, -1, -1, "lzma (lvl 1)");
+    } else if (i == binCenter + 3 * binInterval) {
+      helperEventThroughput->GetXaxis()->ChangeLabel(i, -1, 0.035, 21, -1, -1, "lzma (lvl 7)");
     } else {
-      helperSpeed->GetXaxis()->ChangeLabel(i, -1, 0);
+      helperEventThroughput->GetXaxis()->ChangeLabel(i, -1, 0);
     }
   }
 
-  padSpeed->cd();
+  padEventThroughput->cd();
   gPad->SetGridy();
 
-  helperSpeed->Draw();
+  helperEventThroughput->Draw();
 
-  for (const auto &[compression, formats] : speedGraphMap) {
-    for (const auto &[format, graph] : formats) {
-      graph->SetLineColor(12);
-      graph->SetMarkerColor(12);
-      graph->SetFillColor(colors.at(format));
-      graph->SetFillStyle(styles.at(format));
-      graph->SetLineWidth(2);
-      graph->Draw("B1");
-      graph->Draw("P");
+  for (const auto &[compression, formats] : readSpeedData) {
+    for (const auto &[format, data] : formats) {
+      data.eventThroughputGraph->SetLineColor(12);
+      data.eventThroughputGraph->SetMarkerColor(12);
+      data.eventThroughputGraph->SetFillColor(colors.at(format));
+      data.eventThroughputGraph->SetFillStyle(styles.at(format));
+      data.eventThroughputGraph->SetLineWidth(2);
+      data.eventThroughputGraph->Draw("B1");
+      data.eventThroughputGraph->Draw("P");
+
+      if (format == "rntuple" || format == "rntuple_uring") {
+        for (int i = 0; i < data.eventThroughputGraph->GetN(); ++i) {
+
+          double x, y;
+          data.eventThroughputGraph->GetPoint(i, x, y);
+
+          if (y < 0)
+            continue;
+
+          std::ostringstream val;
+          val.precision(1);
+          val << "#times" << std::fixed
+              << y / readSpeedData[compression]["ttree"].eventThroughputMean;
+          // val << " #pm " << std::fixed << readSpeedData[compression][format].eventThroughputMean;
+
+          TLatex tval;
+          tval.SetTextSize(0.02);
+          tval.SetTextAlign(21);
+          tval.DrawLatex(x, 10000, val.str().c_str());
+        }
+      }
     }
   }
 
-  for (unsigned i = 6; i < 24; i += 6) {
-    TLine *line = new TLine(i, 0, i, maxThroughput * 1.5);
+  for (unsigned i = binInterval; i < nBins; i += binInterval) {
+    TLine *line = new TLine(i, 0, i, maxEventThroughput);
     line->SetLineColor(kBlack);
     line->SetLineStyle(3);
     line->SetLineWidth(1);
     line->Draw();
   }
 
-  TLegend *leg = new TLegend(0.75, 0.7, 0.955, 0.935);
-  leg->AddEntry(speedGraphMap[505]["ttree"], "TTree", "F");
-  leg->AddEntry(speedGraphMap[505]["rntuple"], "RNTuple", "F");
-  leg->AddEntry(speedGraphMap[505]["rntuple_mt"], "RNTuple (w/ decomp. offloading)", "F");
-  leg->AddEntry(speedGraphMap[505]["rntuple_uring"], "RNTuple (w/ liburing)", "F");
-  leg->AddEntry(speedGraphMap[505]["rntuple_mt_uring"],
-                "RNTuple (w/ decomp. offloading + liburing)", "F");
+  TLegend *leg = new TLegend(0.825, 0.8, 0.955, 0.935);
+  leg->AddEntry(readSpeedData[505]["ttree"].eventThroughputGraph, "TTree", "F");
+  leg->AddEntry(readSpeedData[505]["rntuple"].eventThroughputGraph, "RNTuple", "F");
+  leg->AddEntry(readSpeedData[505]["rntuple_uring"].eventThroughputGraph, "RNTuple (w/ liburing)",
+                "F");
   leg->SetNColumns(1);
   leg->SetMargin(0.15);
   leg->Draw();
@@ -526,459 +244,172 @@ void makeTimeOverviewPlot(std::string_view resultsPathBase, std::string_view med
   TText l;
   l.SetTextSize(0.025);
   l.SetTextAlign(13);
-  l.DrawTextNDC(0.918, 0.685, "95% CL");
+  l.DrawTextNDC(0.918, 0.785, "95% CL");
 
   //--------------------------------------------------------------------------//
   // SAVE THE PLOT                                                            //
   //--------------------------------------------------------------------------//
 
   if (save) {
-    canvas->Print(Form("figures/readspeed_overview_%s_%s.pdf", std::string(medium).c_str(),
-                       std::string(physFileType).c_str()));
-    canvas->Print(Form("figures/readspeed_overview_%s_%s.png", std::string(medium).c_str(),
-                       std::string(physFileType).c_str()));
-  }
-}
-
-void makeReadRateOverviewPlot(std::string_view resultsPathBase, std::string_view medium,
-                              std::string_view physFileType = "data", bool save = true) {
-  //--------------------------------------------------------------------------//
-  // PREPARE THE GRAPHS                                                       //
-  //--------------------------------------------------------------------------//
-  float readRate;
-
-  // compression -> storage format -> TGraphErrors*
-  std::map<int, std::map<std::string, TGraphErrors *>> speedGraphMap;
-  // compression -> storage format -> (mean, error)
-  std::map<int, std::map<std::string, std::pair<float, float>>> dataMap;
-  // compression -> TGraphErrors*
-  std::map<int, TGraphErrors *> ratioGraphMap;
-
-  for (const int compression : {0, 505, 201, 207}) {
-    for (const std::string format :
-         {"ttree", "rntuple", "rntuple_mt", "rntuple_uring", "rntuple_mt_uring"}) {
-      std::string resultsFilePath = std::string(resultsPathBase) + "/" + format +
-                                    "/readspeed_cold_" + std::string(physFileType) + "_" +
-                                    std::to_string(compression) + ".txt~read_rates";
-
-      std::ifstream resultsFile(resultsFilePath);
-
-      std::vector<float> readRates;
-      while (resultsFile >> readRate) {
-        readRates.push_back(readRate);
-      }
-
-      RVec<float> readRateVec(readRates.begin(), readRates.end());
-      float readRateMean = Mean(readRateVec);
-      float readRateErr = StdErr(readRateVec);
-      // float readRateMax = (readRateMean - readRateErr);
-      // float readRateMin = (readRateMean + readRateErr);
-      // float throughputErr = (throughputMax - throughputMin) / 2.;
-
-      dataMap[compression][format] = std::pair<float, float>(readRateMean, readRateErr);
-    }
-    dataMap[compression]["fill"] = std::pair<float, float>(0., 0.);
+    canvasEventThroughput->Print(Form("figures/readspeed_event_throughput_%s_%s.pdf",
+                                      std::string(medium).c_str(),
+                                      std::string(physFileType).c_str()));
+    canvasEventThroughput->Print(Form("figures/readspeed_event_throughput_%s_%s.png",
+                                      std::string(medium).c_str(),
+                                      std::string(physFileType).c_str()));
   }
 
-  float maxReadRate = 0.;
-  for (const auto &[compression, formats] : dataMap) {
-    for (const auto &[format, data] : formats) {
-      auto g = new TGraphErrors();
-      int x;
-      if (format == "filler")
-        x = 0;
-      if (format == "ttree")
-        x = 1;
-      else if (format == "rntuple")
-        x = 2;
-      else if (format == "rntuple_mt")
-        x = 3;
-      else if (format == "rntuple_uring")
-        x = 4;
-      else if (format == "rntuple_mt_uring")
-        x = 5;
-
-      switch (compression) {
-      case 0:
-        x += 0;
-        break;
-      case 505:
-        x += 6;
-        break;
-      case 201:
-        x += 12;
-        break;
-      case 207:
-        x += 18;
-        break;
-      }
-      g->SetPoint(0, x + 0, data.first);
-      g->SetPoint(1, x + 2, -1);
-      g->SetPointError(0, 0, data.second);
-      speedGraphMap[compression][format] = g;
-      maxReadRate = std::max(maxReadRate, data.first + data.second);
-    }
-  }
+  //==========================================================================//
+  // RAW BYTE THROUGHPUT                                                      //
+  //==========================================================================//
 
   //--------------------------------------------------------------------------//
-  // SETUP THE CANVAS                                                         //
+  // SET UP THE CANVAS                                                        //
   //--------------------------------------------------------------------------//
 
-  TCanvas *canvas = new TCanvas(
-      Form("canvas_readrate_%s_%s", std::string(medium).c_str(), std::string(physFileType).c_str()),
-      "canvas", 1200, 600);
-  canvas->cd();
+  TCanvas *canvasByteThroughput =
+      new TCanvas("canvas_byte_throughput", "canvas_byte_throughput", 1200, 600);
+  canvasByteThroughput->cd();
 
   // Title pad
-  auto padTitle = new TPad("padTitle", "padTitle", 0.0, 0.93, 1.0, 0.97);
-  padTitle->SetTopMargin(0.02);
-  padTitle->SetBottomMargin(0.01);
-  padTitle->SetLeftMargin(0.1);
-  padTitle->SetRightMargin(0.005);
-  padTitle->SetFillStyle(4000);
-  padTitle->SetFrameFillStyle(4000);
-  padTitle->Draw();
-  canvas->cd();
+  auto padByteTitle = new TPad("padByteTitle", "padByteTitle", 0.0, 0.93, 1.0, 0.97);
+  padByteTitle->SetTopMargin(0.02);
+  padByteTitle->SetBottomMargin(0.01);
+  padByteTitle->SetLeftMargin(0.1);
+  padByteTitle->SetRightMargin(0.005);
+  padByteTitle->SetFillStyle(4000);
+  padByteTitle->SetFrameFillStyle(4000);
+  padByteTitle->Draw();
+  canvasByteThroughput->cd();
 
   // TTree vs RNTuple read throughput speed
-  auto padSpeed = new TPad("padSpeed", "padSpeed", 0.0, 0.03, 1.0, 0.92);
-  padSpeed->SetTopMargin(0.055);
-  padSpeed->SetBottomMargin(0.08);
-  padSpeed->SetLeftMargin(0.08);
-  padSpeed->SetRightMargin(0.04);
-  padSpeed->SetFillStyle(4000);
-  padSpeed->SetFrameFillStyle(4000);
-  padSpeed->Draw();
-  canvas->cd();
+  auto padByteThroughput = new TPad("padByteThroughput", "padByteThroughput", 0.0, 0.03, 1.0, 0.92);
+  padByteThroughput->SetTopMargin(0.055);
+  padByteThroughput->SetBottomMargin(0.08);
+  padByteThroughput->SetLeftMargin(0.08);
+  padByteThroughput->SetRightMargin(0.04);
+  padByteThroughput->SetFillStyle(4000);
+  padByteThroughput->SetFrameFillStyle(4000);
+  padByteThroughput->Draw();
+  canvasByteThroughput->cd();
 
   //--------------------------------------------------------------------------//
   // DRAW THE TITLE                                                           //
   //--------------------------------------------------------------------------//
 
-  padTitle->cd();
-  auto padCenter = padTitle->GetBBoxCenter();
-  auto title = new TText(0.5, 0.5,
-                         Form("TTree vs. RNTuple %s uncompressed read rate (%s)",
-                              std::string(medium).c_str(), std::string(physFileType).c_str()));
-  title->SetBBoxCenter(padTitle->GetBBoxCenter());
-  title->SetTextColor(kBlack);
-  title->SetTextSize(1.00);
-  title->SetTextAlign(23);
-  title->Draw();
+  padByteTitle->cd();
+  // auto padByteCenter = padByteTitle->GetBBoxCenter();
+  auto byteTitle = new TText(
+      0.5, 0.5,
+      Form("TTree vs. RNTuple raw compressed byte throughput (%s)", std::string(medium).c_str()));
+  byteTitle->SetBBoxCenter(padByteTitle->GetBBoxCenter());
+  byteTitle->SetTextColor(kBlack);
+  byteTitle->SetTextSize(1.00);
+  byteTitle->SetTextAlign(23);
+  byteTitle->Draw();
 
   //--------------------------------------------------------------------------//
   // DRAW THE MAIN GRAPH                                                      //
   //--------------------------------------------------------------------------//
+  maxByteThroughput *= 1.25;
 
-  TH1F *helperSpeed = new TH1F("", "", 24, 0, 24);
-  helperSpeed->GetXaxis()->SetTickSize(0);
-  helperSpeed->GetXaxis()->SetNdivisions(25);
-  helperSpeed->GetXaxis()->SetLabelOffset(0.01);
-  helperSpeed->GetXaxis()->SetTitleSize(0.12);
-  helperSpeed->GetYaxis()->SetTitle("MB / s");
-  helperSpeed->GetYaxis()->SetTickSize(0.01);
-  helperSpeed->GetYaxis()->SetLabelSize(0.045);
-  helperSpeed->GetYaxis()->SetTitleSize(0.05);
-  helperSpeed->GetYaxis()->SetTitleOffset(0.725);
-  helperSpeed->SetMinimum(0);
-  helperSpeed->SetMaximum(maxReadRate * 1.525);
+  TH1F *helperByteThroughput = new TH1F("", "", 16, 0, 16);
+  helperByteThroughput->GetXaxis()->SetTickSize(0);
+  helperByteThroughput->GetXaxis()->SetNdivisions(25);
+  helperByteThroughput->GetXaxis()->SetLabelOffset(0.01);
+  // helperByteThroughput->GetYaxis()->SetMaxDigits(4);
+  helperByteThroughput->GetYaxis()->SetTickSize(0.01);
+  helperByteThroughput->GetYaxis()->SetLabelSize(0.0375);
+  helperByteThroughput->GetYaxis()->SetTitle("MB / s");
+  helperByteThroughput->GetYaxis()->SetTitleSize(0.045);
+  helperByteThroughput->GetYaxis()->SetTitleOffset(0.8);
+  helperByteThroughput->SetMinimum(0);
+  helperByteThroughput->SetMaximum(maxByteThroughput);
 
-  for (int i = 0; i <= helperSpeed->GetXaxis()->GetNlabels(); i++) {
-    if (i == 4) {
-      helperSpeed->GetXaxis()->ChangeLabel(i, -1, 0.04, 21, -1, -1, "no compression");
-    } else if (i == 10) {
-      helperSpeed->GetXaxis()->ChangeLabel(i, -1, 0.04, 21, -1, -1, "zstd");
-    } else if (i == 16) {
-      helperSpeed->GetXaxis()->ChangeLabel(i, -1, 0.04, 21, -1, -1, "lzma (lvl 1)");
-    } else if (i == 22) {
-      helperSpeed->GetXaxis()->ChangeLabel(i, -1, 0.04, 21, -1, -1, "lzma (lvl 7)");
+  for (int i = 0; i <= nBins + 1; i++) {
+    if (i == binCenter) {
+      helperByteThroughput->GetXaxis()->ChangeLabel(i, -1, 0.035, 21, -1, -1, "no compression");
+    } else if (i == binCenter + binInterval) {
+      helperByteThroughput->GetXaxis()->ChangeLabel(i, -1, 0.035, 21, -1, -1, "zstd");
+    } else if (i == binCenter + 2 * binInterval) {
+      helperByteThroughput->GetXaxis()->ChangeLabel(i, -1, 0.035, 21, -1, -1, "lzma (lvl 1)");
+    } else if (i == binCenter + 3 * binInterval) {
+      helperByteThroughput->GetXaxis()->ChangeLabel(i, -1, 0.035, 21, -1, -1, "lzma (lvl 7)");
     } else {
-      helperSpeed->GetXaxis()->ChangeLabel(i, -1, 0);
+      helperByteThroughput->GetXaxis()->ChangeLabel(i, -1, 0);
     }
   }
 
-  padSpeed->cd();
+  padByteThroughput->cd();
   gPad->SetGridy();
 
-  helperSpeed->Draw();
+  helperByteThroughput->Draw();
 
-  for (const auto &[compression, formats] : speedGraphMap) {
-    for (const auto &[format, graph] : formats) {
-      graph->SetLineColor(12);
-      graph->SetMarkerColor(12);
-      graph->SetFillColor(colors.at(format));
-      graph->SetFillStyle(styles.at(format));
-      graph->SetLineWidth(2);
-      graph->Draw("B1");
-      graph->Draw("P");
+  for (const auto &[compression, formats] : readSpeedData) {
+    for (const auto &[format, data] : formats) {
+      data.byteThroughputGraph->SetLineColor(12);
+      data.byteThroughputGraph->SetMarkerColor(12);
+      data.byteThroughputGraph->SetFillColor(colors.at(format));
+      data.byteThroughputGraph->SetFillStyle(styles.at(format));
+      data.byteThroughputGraph->SetLineWidth(2);
+      data.byteThroughputGraph->Draw("B1");
+      data.byteThroughputGraph->Draw("P");
+
+      if (format == "rntuple" || format == "rntuple_uring") {
+        for (int i = 0; i < data.byteThroughputGraph->GetN(); ++i) {
+
+          double x, y;
+          data.byteThroughputGraph->GetPoint(i, x, y);
+
+          if (y < 0)
+            continue;
+
+          std::ostringstream val;
+          val.precision(1);
+          val << "#times" << std::fixed
+              << y / readSpeedData[compression]["ttree"].byteThroughputMean;
+          // val << " #pm " << std::fixed << readSpeedData[compression][format].byteThroughputMean;
+
+          TLatex tval;
+          tval.SetTextSize(0.02);
+          tval.SetTextAlign(21);
+          tval.DrawLatex(x, 100, val.str().c_str());
+        }
+      }
     }
   }
 
-  for (unsigned i = 6; i < 24; i += 6) {
-    TLine *line = new TLine(i, 0, i, maxReadRate * 1.525);
+  for (unsigned i = binInterval; i < nBins; i += binInterval) {
+    TLine *line = new TLine(i, 0, i, maxByteThroughput);
     line->SetLineColor(kBlack);
     line->SetLineStyle(3);
     line->SetLineWidth(1);
     line->Draw();
   }
 
-  TLegend *leg = new TLegend(0.75, 0.7, 0.955, 0.935);
-  leg->AddEntry(speedGraphMap[505]["ttree"], "TTree", "F");
-  leg->AddEntry(speedGraphMap[505]["rntuple"], "RNTuple", "F");
-  leg->AddEntry(speedGraphMap[505]["rntuple_mt"], "RNTuple (w/ decomp. offloading)", "F");
-  leg->AddEntry(speedGraphMap[505]["rntuple_uring"], "RNTuple (w/ liburing)", "F");
-  leg->AddEntry(speedGraphMap[505]["rntuple_mt_uring"],
-                "RNTuple (w/ decomp. offloading + liburing)", "F");
-  leg->SetNColumns(1);
-  leg->SetMargin(0.15);
   leg->Draw();
-
-  TText l;
-  l.SetTextSize(0.025);
-  l.SetTextAlign(13);
-  l.DrawTextNDC(0.918, 0.685, "95% CL");
+  l.DrawTextNDC(0.918, 0.785, "95% CL");
 
   //--------------------------------------------------------------------------//
   // SAVE THE PLOT                                                            //
   //--------------------------------------------------------------------------//
 
   if (save) {
-    canvas->Print(Form("figures/readrate_overview_%s_%s.pdf", std::string(medium).c_str(),
-                       std::string(physFileType).c_str()));
-    canvas->Print(Form("figures/readrate_overview_%s_%s.png", std::string(medium).c_str(),
-                       std::string(physFileType).c_str()));
-  }
-}
-
-void makeRDFOverviewPlot(std::string_view resultsPathBase, std::string_view medium,
-                         std::string_view physFileType = "data", bool save = true) {
-  //--------------------------------------------------------------------------//
-  // PREPARE THE GRAPHS                                                       //
-  //--------------------------------------------------------------------------//
-  float initTime, loopTime;
-
-  float nEvents = physFileType == "data" ? 209062 : 180000;
-
-  // compression -> storage format -> TGraphErrors*
-  std::map<int, std::map<std::string, TGraphErrors *>> speedGraphMap;
-  // compression -> storage format -> (mean, error)
-  std::map<int, std::map<std::string, std::pair<float, float>>> dataMap;
-  // compression -> TGraphErrors*
-  std::map<int, TGraphErrors *> ratioGraphMap;
-
-  for (const int compression : {0, 505, 201, 207}) {
-    for (const std::string format :
-         {"ttree", "rntuple", "rntuple_mt", "rntuple_uring", "rntuple_mt_uring"}) {
-      std::string resultsFilePath = std::string(resultsPathBase) + "/" + format +
-                                    "/readspeed_cold_" + std::string(physFileType) + "_" +
-                                    std::to_string(compression) + ".txt";
-
-      std::ifstream resultsFile(resultsFilePath);
-
-      std::vector<float> loopTimes;
-      while (resultsFile >> initTime >> loopTime) {
-        float seconds = loopTime / 1e6;
-        loopTimes.push_back(seconds);
-      }
-
-      RVec<float> loopTimeVec(loopTimes.begin(), loopTimes.end());
-      float secondsMean = Mean(loopTimeVec);
-      float secondsErr = StdErr(loopTimeVec);
-      float throughputMean = nEvents / secondsMean;
-      float throughputMax = nEvents / (secondsMean - secondsErr);
-      float throughputMin = nEvents / (secondsMean + secondsErr);
-      float throughputErr = (throughputMax - throughputMin) / 2.;
-
-      dataMap[compression][format] = std::pair<float, float>(throughputMean, throughputErr);
-    }
-    dataMap[compression]["fill"] = std::pair<float, float>(0., 0.);
-  }
-
-  float maxLoopTime = 0.;
-  for (const auto &[compression, formats] : dataMap) {
-    for (const auto &[format, data] : formats) {
-      auto g = new TGraphErrors();
-      int x;
-      if (format == "filler")
-        x = 0;
-      if (format == "ttree")
-        x = 1;
-      else if (format == "rntuple")
-        x = 2;
-      else if (format == "rntuple_mt")
-        x = 3;
-      else if (format == "rntuple_uring")
-        x = 4;
-      else if (format == "rntuple_mt_uring")
-        x = 5;
-
-      switch (compression) {
-      case 0:
-        x += 0;
-        break;
-      case 505:
-        x += 6;
-        break;
-      case 201:
-        x += 12;
-        break;
-      case 207:
-        x += 18;
-        break;
-      }
-      g->SetPoint(0, x + 0, data.first);
-      g->SetPoint(1, x + 2, -1);
-      g->SetPointError(0, 0, data.second);
-      speedGraphMap[compression][format] = g;
-      maxLoopTime = std::max(maxLoopTime, data.first + data.second);
-    }
-  }
-
-  //--------------------------------------------------------------------------//
-  // SETUP THE CANVAS                                                         //
-  //--------------------------------------------------------------------------//
-
-  TCanvas *canvas = new TCanvas(
-      Form("canvas_readrate_%s_%s", std::string(medium).c_str(), std::string(physFileType).c_str()),
-      "canvas", 1200, 600);
-  canvas->cd();
-
-  // Title pad
-  auto padTitle = new TPad("padTitle", "padTitle", 0.0, 0.93, 1.0, 0.97);
-  padTitle->SetTopMargin(0.02);
-  padTitle->SetBottomMargin(0.01);
-  padTitle->SetLeftMargin(0.1);
-  padTitle->SetRightMargin(0.005);
-  padTitle->SetFillStyle(4000);
-  padTitle->SetFrameFillStyle(4000);
-  padTitle->Draw();
-  canvas->cd();
-
-  // TTree vs RNTuple read throughput speed
-  auto padSpeed = new TPad("padSpeed", "padSpeed", 0.0, 0.03, 1.0, 0.92);
-  padSpeed->SetTopMargin(0.055);
-  padSpeed->SetBottomMargin(0.08);
-  padSpeed->SetLeftMargin(0.08);
-  padSpeed->SetRightMargin(0.04);
-  padSpeed->SetFillStyle(4000);
-  padSpeed->SetFrameFillStyle(4000);
-  padSpeed->Draw();
-  canvas->cd();
-
-  //--------------------------------------------------------------------------//
-  // DRAW THE TITLE                                                           //
-  //--------------------------------------------------------------------------//
-
-  padTitle->cd();
-  auto padCenter = padTitle->GetBBoxCenter();
-  auto title = new TText(0.5, 0.5,
-                         Form("TTree vs. RNTuple %s RDataFrame throughput (%s)",
-                              std::string(medium).c_str(), std::string(physFileType).c_str()));
-  title->SetBBoxCenter(padTitle->GetBBoxCenter());
-  title->SetTextColor(kBlack);
-  title->SetTextSize(1.00);
-  title->SetTextAlign(23);
-  title->Draw();
-
-  //--------------------------------------------------------------------------//
-  // DRAW THE MAIN GRAPH                                                      //
-  //--------------------------------------------------------------------------//
-
-  TH1F *helperSpeed = new TH1F("", "", 24, 0, 24);
-  helperSpeed->GetXaxis()->SetTickSize(0);
-  helperSpeed->GetXaxis()->SetNdivisions(25);
-  helperSpeed->GetXaxis()->SetLabelOffset(0.01);
-  helperSpeed->GetXaxis()->SetTitleSize(0.12);
-  helperSpeed->GetYaxis()->SetTitle("Events / s");
-  helperSpeed->GetYaxis()->SetTickSize(0.01);
-  helperSpeed->GetYaxis()->SetLabelSize(0.045);
-  helperSpeed->GetYaxis()->SetTitleSize(0.05);
-  helperSpeed->GetYaxis()->SetTitleOffset(0.725);
-  helperSpeed->SetMinimum(0);
-  helperSpeed->SetMaximum(maxLoopTime * 1.25);
-
-  for (int i = 0; i <= helperSpeed->GetXaxis()->GetNlabels(); i++) {
-    if (i == 4) {
-      helperSpeed->GetXaxis()->ChangeLabel(i, -1, 0.04, 21, -1, -1, "no compression");
-    } else if (i == 10) {
-      helperSpeed->GetXaxis()->ChangeLabel(i, -1, 0.04, 21, -1, -1, "zstd");
-    } else if (i == 16) {
-      helperSpeed->GetXaxis()->ChangeLabel(i, -1, 0.04, 21, -1, -1, "lzma (lvl 1)");
-    } else if (i == 22) {
-      helperSpeed->GetXaxis()->ChangeLabel(i, -1, 0.04, 21, -1, -1, "lzma (lvl 7)");
-    } else {
-      helperSpeed->GetXaxis()->ChangeLabel(i, -1, 0);
-    }
-  }
-
-  padSpeed->cd();
-  gPad->SetGridy();
-
-  helperSpeed->Draw();
-
-  for (const auto &[compression, formats] : speedGraphMap) {
-    for (const auto &[format, graph] : formats) {
-      graph->SetLineColor(12);
-      graph->SetMarkerColor(12);
-      graph->SetFillColor(colors.at(format));
-      graph->SetFillStyle(styles.at(format));
-      graph->SetLineWidth(2);
-      graph->Draw("B1");
-      graph->Draw("P");
-    }
-  }
-
-  for (unsigned i = 6; i < 24; i += 6) {
-    TLine *line = new TLine(i, 0, i, maxLoopTime * 1.25);
-    line->SetLineColor(kBlack);
-    line->SetLineStyle(3);
-    line->SetLineWidth(1);
-    line->Draw();
-  }
-
-  TLegend *leg = new TLegend(0.75, 0.7, 0.955, 0.935);
-  leg->AddEntry(speedGraphMap[505]["ttree"], "TTree", "F");
-  leg->AddEntry(speedGraphMap[505]["rntuple"], "RNTuple", "F");
-  leg->AddEntry(speedGraphMap[505]["rntuple_mt"], "RNTuple (w/ decomp. offloading/MT EL)", "F");
-  leg->AddEntry(speedGraphMap[505]["rntuple_uring"], "RNTuple (w/ liburing)", "F");
-  leg->AddEntry(speedGraphMap[505]["rntuple_mt_uring"],
-                "RNTuple (w/ decomp. offloading/MT EL + liburing)", "F");
-  leg->SetNColumns(1);
-  leg->SetMargin(0.15);
-  leg->Draw();
-
-  TText l;
-  l.SetTextSize(0.025);
-  l.SetTextAlign(13);
-  l.DrawTextNDC(0.918, 0.685, "95% CL");
-
-  //--------------------------------------------------------------------------//
-  // SAVE THE PLOT                                                            //
-  //--------------------------------------------------------------------------//
-
-  if (save) {
-    canvas->Print(Form("figures/rdf_overview_%s_%s.pdf", std::string(medium).c_str(),
-                       std::string(physFileType).c_str()));
-    canvas->Print(Form("figures/rdf_overview_%s_%s.png", std::string(medium).c_str(),
-                       std::string(physFileType).c_str()));
+    canvasByteThroughput->Print(Form("figures/readspeed_byte_throughput_%s_%s.pdf",
+                                     std::string(medium).c_str(),
+                                     std::string(physFileType).c_str()));
+    canvasByteThroughput->Print(Form("figures/readspeed_byte_throughput_%s_%s.png",
+                                     std::string(medium).c_str(),
+                                     std::string(physFileType).c_str()));
   }
 }
 
 void plot_readspeed() {
   SetStyle();
-  // makePlot("results/ssd", "SSD", "data", false);
-  // makePlot("results/ssd", "SSD", "mc", false);
-  // makePlot("results/ssd_mt", "SSD+MT", "data", false);
-  // makePlot("results/ssd_mt", "SSD+MT", "mc", false);
-  // makeTimeOverviewPlot("results/ssd_verbose", "SSD", "data", true);
-  // makeTimeOverviewPlot("results/ssd_verbose", "SSD", "mc", true);
-  // makeReadRateOverviewPlot("results/ssd_verbose", "SSD", "data", true);
-  // makeReadRateOverviewPlot("results/ssd_verbose", "SSD", "mc", true);
 
-  // makeTimeOverviewPlot("results/hdd_verbose", "HDD", "data", true);
-  // makeTimeOverviewPlot("results/hdd_verbose", "HDD", "mc", true);
-  // makeReadRateOverviewPlot("results/hdd_verbose", "HDD", "data", true);
-  // makeReadRateOverviewPlot("results/hdd_verbose", "HDD", "mc", true);
-
-  makeRDFOverviewPlot("results/ssd_rdf", "SSD", "data", true);
+  // makeOverviewPlot("results/local_rdf", "SSD (local)", "mc", true);
+  // makeOverviewPlot("results/ssd_rdf", "SSD", "mc", true);
+  // makeOverviewPlot("results/rdf_cached", "cached", "data", true);
+  makeOverviewPlot("results/local_rdf", "SSD", "data", false);
+  // makeOverviewPlot("results/ssd_rdf", "SSD", "data", false);
 }

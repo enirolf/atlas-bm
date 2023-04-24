@@ -1,4 +1,5 @@
 from typing import List, Tuple
+from argparse import ArgumentParser
 
 import os
 import re
@@ -18,7 +19,8 @@ def get_rntuple_uncompressed_read_rates(metricsLines: List[str]) -> List[str]:
     read_rates = []
     for ln in metricsLines:
         m = re.match(
-            r"RDF\.RPageSourceFile\.bwRead\|MB/s\|bandwidth compressed bytes read per second\|(?P<read_rate>.*)",
+            r"RDF\.RPageSourceFile\.bwRead\|MB/s\|bandwidth compressed bytes "
+            r"read per second\|(?P<read_rate>.*)",
             ln,
         )
         if m:
@@ -30,7 +32,9 @@ def get_rdf_wall_times(metricsLines: List[str]) -> List[str]:
     wall_times = []
     for ln in metricsLines:
         m = re.match(
-            r"Info in <\[ROOT\.RDF\] Info (.*) in void ROOT::Detail::RDF::RLoopManager::Run\(bool\)>: Finished event loop number . \([\.0-9]*s CPU, (?P<wall_time>[\.0-9]*)s elapsed\)\.",
+            r"Info in <\[ROOT\.RDF\] Info (.*) in void "
+            r"ROOT::Detail::RDF::RLoopManager::Run\(bool\)>: Finished event "
+            r"loop number . \([\.0-9]*s CPU, (?P<wall_time>[\.0-9]*)s elapsed\)\.",
             ln,
         )
         if m:
@@ -54,21 +58,27 @@ def write_stats(stats: List[Tuple[float, ...]], path: str) -> None:
 
 
 if __name__ == "__main__":
-    for dir_name in ["local_rdf"]:
-        for root, dirs, files in os.walk("results/" + dir_name):
-            for file in files:
-                if not file.endswith(".txt"):
-                    continue
+    arg_parser = ArgumentParser(
+        prog="extract_metrics.py",
+        description="Extract relevant metrics from bm_readspeed output files",
+    )
+    arg_parser.add_argument("results_dir")
+    args = arg_parser.parse_args()
 
-                path = os.path.join(root, file)
-                print(path)
-                with open(path, "r") as f:
-                    lines = f.readlines()
-                    wall_times = get_rdf_wall_times(lines)
+    for root, dirs, files in os.walk(args.results_dir):
+        for file in files:
+            if not file.endswith(".txt"):
+                continue
 
-                    if "tree" in root:
-                        read_rates = get_ttree_uncompressed_read_rates(lines)
-                    else:
-                        read_rates = get_rntuple_uncompressed_read_rates(lines)
+            path = os.path.join(root, file)
 
-                    write_stats(list(zip(wall_times, read_rates)), path + ".data")
+            with open(path, "r") as f:
+                lines = f.readlines()
+                wall_times = get_rdf_wall_times(lines)
+
+                if "ttree" in root:
+                    read_rates = get_ttree_uncompressed_read_rates(lines)
+                else:
+                    read_rates = get_rntuple_uncompressed_read_rates(lines)
+
+            write_stats(list(zip(wall_times, read_rates)), path[:-4] + ".data")
