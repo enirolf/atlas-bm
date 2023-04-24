@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 
+COLD_CACHE=true
+
 function drop_caches() {
   sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'
 }
 
-function bm_cold_cache() {
+function bm_readspeed() {
   storage_name=$1
   storage_type=$2
   results_dir=$3/$storage_type
@@ -18,19 +20,20 @@ function bm_cold_cache() {
   for phys_file_type in {data,mc}; do
     for compression in {0,201,207,505}; do
       source_file=${SOURCE_DIR}/${phys_file_type}/DAOD_PHYS.${storage_type}.root~${compression}
-      results_file=${results_dir}/readspeed_cold_${phys_file_type}_${compression}.txt
+      results_file=${results_dir}/readspeed_${phys_file_type}_${compression}.txt
 
       echo "Running for $storage_type ($phys_file_type, $compression)..."
 
       for (( i = 0; i < $N_REPETITIONS; i++ )); do
-        drop_caches
-
-        if [ "$storage_type" = "rntuple_mt" ]; then
-            source_file=${SOURCE_DIR}/${phys_file_type}/DAOD_PHYS.rntuple.root~${compression}
-            results=$(bin/bm_readspeed -i $source_file -n $storage_name -s rntuple 2>&1)
-        else
-            results=$(bin/bm_readspeed -i $source_file -n $storage_name -s $storage_type 2>&1)
+        if [ "$COLD_CACHE" = true ]; then
+          drop_caches
         fi
+
+        if [ "$COLD_CACHE" = false ] && [ "$i" = 0 ]; then
+          continue
+        fi
+
+        results=$(bin/bm_readspeed -i $source_file -n $storage_name -s $storage_type 2>&1)
         echo "$results" >> $results_file
       done
     done
@@ -38,8 +41,8 @@ function bm_cold_cache() {
 }
 
 function main() {
-  bm_cold_cache CollectionTree ttree $1
-  bm_cold_cache RNT:CollectionTree rntuple $1
+  bm_readspeed CollectionTree ttree $1
+  bm_readspeed RNT:CollectionTree rntuple $1
 }
 
 
