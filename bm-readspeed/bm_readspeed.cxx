@@ -61,18 +61,15 @@ void bmRDFReadspeed(ROOT::RDataFrame &rdf, bool isNTuple) {
 
   // Need to get access to the RInterface object.
   auto rdfEL = rdf.Define("NOOP", []() { return true; });
+  std::vector<ROOT::RDF::RResultPtr<TH1D>> histInvMasses;
 
   for (const auto c : containers) {
     rdfEL = rdfEL.Define(
         "invMass" + std::string(c), ROOT::VecOps::InvariantMass<float>,
         {std::string(c) + "AuxDyn" + sep + "pt", std::string(c) + "AuxDyn" + sep + "eta",
          std::string(c) + "AuxDyn" + sep + "m", std::string(c) + "AuxDyn" + sep + "phi"});
-  }
-
-  for (const auto c : containers) {
-    auto histInvMass = rdfEL.Histo1D<float>({"histInvMas", "histInvMas", 128, 0, 20000},
-                                            "invMass" + std::string(c));
-    *histInvMass;
+    histInvMasses.emplace_back(rdfEL.Histo1D<float>({"histInvMas", "histInvMas", 128, 0, 20000},
+                                                    "invMass" + std::string(c)));
   }
 
   std::cout << "Events processed: " << *rdfEL.Count() << std::endl;
