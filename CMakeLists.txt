@@ -5,7 +5,7 @@ project(AtlasBM VERSION 0.1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_compile_options(-Wall -pthread -Wall -g -O2)
+add_compile_options(-Wall -pthread -Wall -g -O3)
 
 find_package(ROOT CONFIG REQUIRED)
 

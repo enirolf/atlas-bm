@@ -29,7 +29,7 @@ void makePlot(const std::string &physFileType = "data", bool save = true) {
   // compression -> TGraphErrors*
   std::map<int, TGraphErrors *> ratioGraphMap;
 
-  float maxSize = 0.;
+  float maxInputSize = 0.;
   while (file >> format >> compression >> nEvents >> nCols >> onDiskSize >> inMemorySize) {
     float eventSize;
 
@@ -38,7 +38,8 @@ void makePlot(const std::string &physFileType = "data", bool save = true) {
     else
       eventSize = onDiskSize / nEvents;
     dataMap[compression][format] = eventSize / 1024;
-    maxSize = std::max(maxSize, eventSize);
+    dataMap[compression]["filler"] = 0;
+    maxInputSize = std::max(maxInputSize, eventSize);
   }
 
   float maxRatio = 0.;
@@ -46,28 +47,35 @@ void makePlot(const std::string &physFileType = "data", bool save = true) {
     for (const auto &[format, data] : formats) {
       float eventSize = dataMap[compression][format];
 
-      if (maxSize < 1024)
+      if (maxInputSize < 1024)
         dataMap[compression][format] *= 1024.;
 
-      int x = (format == "rntuple");
+      int x;
+      if (format == "filler")
+        x = 0;
+      if (format == "ttree")
+        x = 1;
+      else if (format == "rntuple")
+        x = 2;
+
       switch (compression) {
       case 0:
         x += 0;
         break;
       case 505:
-        x += 2;
+        x += 3;
         break;
       case 201:
-        x += 4;
+        x += 6;
         break;
       case 207:
-        x += 6;
+        x += 9;
         break;
       }
 
       auto g = new TGraphErrors();
-      g->SetPoint(0, x + 0.5, eventSize);
-      g->SetPoint(1, x + 2.25, -1);
+      g->SetPoint(0, x + 0, eventSize);
+      g->SetPoint(1, x + 2, -1);
       g->SetPointError(0, 0, 0);
       sizeGraphMap[compression][format] = g;
     }
@@ -99,8 +107,9 @@ void makePlot(const std::string &physFileType = "data", bool save = true) {
     ratioGraphMap[compression] = g;
   }
 
-  if (maxSize > 1024) {
-    maxSize /= 1024;
+  float maxSize = maxInputSize;
+  if (maxInputSize > 1024) {
+    maxSize = maxInputSize / 1024;
   }
 
   //--------------------------------------------------------------------------//
@@ -176,11 +185,11 @@ void makePlot(const std::string &physFileType = "data", bool save = true) {
   padDiskSize->cd();
   gPad->SetGridy();
 
-  TH1F *helperDiskSize = new TH1F("", "", 8, 0, 8);
+  TH1F *helperDiskSize = new TH1F("", "", 12, 0, 12);
   helperDiskSize->GetXaxis()->SetNdivisions(2);
   helperDiskSize->GetXaxis()->SetLabelSize(0);
   helperDiskSize->GetXaxis()->SetTickSize(0);
-  if (maxSize > 1024)
+  if (maxInputSize > 1024)
     helperDiskSize->GetYaxis()->SetTitle("Average event size [kB]");
   else
     helperDiskSize->GetYaxis()->SetTitle("Average event size [B]");
@@ -204,7 +213,7 @@ void makePlot(const std::string &physFileType = "data", bool save = true) {
     }
   }
 
-  for (unsigned i = 2; i < 8; i += 2) {
+  for (unsigned i = 3; i < 12; i += 3) {
     TLine *line = new TLine(i, 0, i, maxSize * 1.1);
     line->SetLineColor(kBlack);
     line->SetLineStyle(3);
@@ -252,7 +261,7 @@ void makePlot(const std::string &physFileType = "data", bool save = true) {
   for (const auto &[compression, graph] : ratioGraphMap) {
     graph->SetLineColor(12);
     graph->SetMarkerColor(12);
-    graph->SetFillColor(kPlotGreen);
+    graph->SetFillColor(colors.at("ratio"));
     graph->SetFillStyle(1001);
     graph->SetLineWidth(2);
     graph->Draw("B1");
@@ -265,9 +274,9 @@ void makePlot(const std::string &physFileType = "data", bool save = true) {
     val << std::fixed << y * 100;
     val << "%";
     TLatex tval;
-    tval.SetTextSize(0.08);
+    tval.SetTextSize(0.075);
     tval.SetTextAlign(23);
-    tval.DrawLatex(x, y * 0.8, val.str().c_str());
+    tval.DrawLatex(x, maxRatio * 0.15, val.str().c_str());
   }
 
   TLine *lineOneDisk = new TLine(1, 1, 9, 1);
@@ -307,7 +316,6 @@ void makePlot(const std::string &physFileType = "data", bool save = true) {
 
   if (save) {
     canvas->Print(Form("figures/size_%s.pdf", physFileType.c_str()));
-    canvas->Print(Form("figures/size_%s.svg", physFileType.c_str()));
     canvas->Print(Form("figures/size_%s.png", physFileType.c_str()));
   }
 }

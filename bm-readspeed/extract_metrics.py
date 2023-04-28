@@ -9,7 +9,8 @@ import statistics
 def get_ttree_uncompressed_read_rates(metricsLines: List[str]) -> List[str]:
     read_rates = []
     for ln in metricsLines:
-        m = re.match(r"ReadRT\s*=\s*(?P<read_rate>.*) MBytes/s", ln)
+        m = re.match(r"Disk IO\s*=\s*(?P<read_rate>.*) MBytes/s", ln)
+        # m = re.match(r"ReadRT\s*=\s*(?P<read_rate>.*) MBytes/s", ln)
         if m:
             read_rates.append(m.group("read_rate"))
     return read_rates
@@ -30,7 +31,10 @@ def get_rntuple_uncompressed_read_rates(metricsLines: List[str]) -> List[str]:
 
 def get_rdf_wall_times(metricsLines: List[str]) -> List[str]:
     wall_times = []
+    n_runs = 0
     for ln in metricsLines:
+        if ln.startswith("Events processed:"):
+            n_runs += 1
         m = re.match(
             r"Info in <\[ROOT\.RDF\] Info (.*) in void "
             r"ROOT::Detail::RDF::RLoopManager::Run\(bool\)>: Finished event "
@@ -40,7 +44,8 @@ def get_rdf_wall_times(metricsLines: List[str]) -> List[str]:
         if m:
             wall_times.append(float(m.group("wall_time")))
 
-    n = int(len(wall_times) / 10)
+    n = int(len(wall_times) / n_runs)
+    # n = 1
     return [str(sum(wall_times[i : i + n])) for i in range(0, len(wall_times), n)]
 
 

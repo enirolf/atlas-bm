@@ -19,10 +19,11 @@ enum EnumPlotColors { kPlotRed = kRed - 3, kPlotBlue = kBlue - 3, kPlotGreen = k
 const std::map<std::string, int> colors{{"ttree", TColor::GetColor(2, 103, 193)},
                                         {"rntuple", TColor::GetColor(200, 62, 77)},
                                         {"rntuple_uring", TColor::GetColor(59, 178, 115)},
-                                        {"fill", TColor::GetColor(0, 0, 0)}};
+                                        {"ratio", TColor::GetColor(59, 178, 115)},
+                                        {"filler", TColor::GetColor(0, 0, 0)}};
 const std::map<std::string, int> styles{
     {"ttree", 1001},         {"rntuple", 1001},          {"rntuple_mt", 3001},
-    {"rntuple_uring", 1001}, {"rntuple_mt_uring", 3008}, {"fill", 1001}};
+    {"rntuple_uring", 1001}, {"rntuple_mt_uring", 3008}, {"filler", 1001}};
 
 float StdErr(ROOT::VecOps::RVec<float> vals) {
   int nVal = vals.size();
@@ -41,7 +42,9 @@ void SetStyle() {
 
 Int_t GetTransparentColor() { return 1179; }
 
-int getXVal(std::string_view format, int compression) {
+int getXVal(std::string_view format, int compression, bool withUring) {
+  int factor = withUring ? 4 : 3;
+
   int x;
   if (format == "filler")
     x = 0;
@@ -54,16 +57,16 @@ int getXVal(std::string_view format, int compression) {
 
   switch (compression) {
   case 0:
-    x += 0;
+    x += 0 * factor;
     break;
   case 505:
-    x += 4;
+    x += 1 * factor;
     break;
   case 201:
-    x += 8;
+    x += 2 * factor;
     break;
   case 207:
-    x += 12;
+    x += 3 * factor;
     break;
   }
   return x;

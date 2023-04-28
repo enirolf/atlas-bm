@@ -15,6 +15,8 @@
 
 using namespace ROOT::VecOps;
 
+const bool kRemoveOutliers = false;
+
 struct ReadSpeedData {
   TGraphErrors *eventThroughputGraph;
   float eventThroughputMean, eventThroughputErr;
@@ -23,23 +25,27 @@ struct ReadSpeedData {
   float byteThroughputMean, byteThroughputErr;
 };
 
-void makeOverviewPlot(std::string_view resultsPathBase, std::string_view medium,
-                      std::string_view physFileType = "data", bool save = true) {
+void plotOverview(std::string_view resultsPathBase, std::string_view medium,
+                  std::string_view physFileType = "data", bool withUring = true,
+                  bool save = false) {
   //--------------------------------------------------------------------------//
   // PREPARE THE GRAPHS                                                       //
   //--------------------------------------------------------------------------//
-  float nEvents = (physFileType == "data" ? 209062 : 180000) * 8; // TODO add to results file
+  float nEvents = (physFileType == "data" ? 209062 : 180000); // TODO add to results file
   float eventLoopTime;
   float byteReadRate;
 
   // compression -> storage format -> readspeed data
   std::map<int, std::map<std::string, ReadSpeedData>> readSpeedData;
 
+  auto formats = withUring ? std::vector<std::string>{"ttree", "rntuple", "rntuple_uring"}
+                           : std::vector<std::string>{"ttree", "rntuple"};
+
   for (const int compression : {0, 505, 201, 207}) {
-    for (const std::string format : {"ttree", "rntuple", "rntuple_uring"}) {
-      std::string resultsFilePath = std::string(resultsPathBase) + "/" + format +
-                                    "/readspeed_cold_" + std::string(physFileType) + "_" +
-                                    std::to_string(compression) + ".data";
+    for (const std::string format : formats) {
+      std::string resultsFilePath = std::string(resultsPathBase) + "/" + format + "/readspeed_" +
+                                    std::string(physFileType) + "_" + std::to_string(compression) +
+                                    ".data";
 
       std::ifstream resultsFile(resultsFilePath);
 
@@ -59,6 +65,17 @@ void makeOverviewPlot(std::string_view resultsPathBase, std::string_view medium,
       float eventThroughputMin = nEvents / (eventLoopTimeMean + eventLoopTimeErr);
       float eventThroughputErr = (eventThroughputMax - eventThroughputMin) / 2.;
 
+      if (kRemoveOutliers) {
+        float eventThroughputStdDev = StdDev(eventLoopTimeVec);
+        auto filteredEvents =
+            Filter(eventLoopTimeVec, [eventThroughputMean, eventThroughputStdDev](float x) {
+              float z = (x - eventThroughputMean) / eventThroughputStdDev;
+              return z < -3. || z > 3.;
+            });
+
+        // std::cout << filteredEvents.size() << std::endl;
+      }
+
       RVec<float> byteReadRateVec(byteReadRates.begin(), byteReadRates.end());
       float byteThroughputMean = Mean(byteReadRateVec);
       float byteThroughputErr = StdErr(byteReadRateVec);
@@ -68,7 +85,7 @@ void makeOverviewPlot(std::string_view resultsPathBase, std::string_view medium,
                         new TGraphErrors(), byteThroughputMean,  byteThroughputErr};
     }
 
-    readSpeedData[compression]["fill"] =
+    readSpeedData[compression]["filler"] =
         ReadSpeedData{new TGraphErrors(), 0., 0., new TGraphErrors(), 0., 0.};
   }
 
@@ -76,14 +93,7 @@ void makeOverviewPlot(std::string_view resultsPathBase, std::string_view medium,
   float maxByteThroughput = 0.;
   for (const auto &[compression, formats] : readSpeedData) {
     for (const auto &[format, data] : formats) {
-      if (format != "fill") {
-        std::cout << "Event throughput " << format << ", " << compression << " = "
-                  << data.eventThroughputMean << " +/- " << data.eventThroughputErr << std::endl;
-        std::cout << "Byte throughput " << format << ", " << compression << " = "
-                  << data.byteThroughputMean << " +/- " << data.byteThroughputErr << std::endl;
-      }
-
-      int x = getXVal(format, compression);
+      int x = getXVal(format, compression, withUring);
 
       auto gEvent = data.eventThroughputGraph;
       gEvent->SetPoint(0, x + 0, data.eventThroughputMean);
@@ -110,7 +120,8 @@ void makeOverviewPlot(std::string_view resultsPathBase, std::string_view medium,
   //--------------------------------------------------------------------------//
 
   TCanvas *canvasEventThroughput =
-      new TCanvas("canvas_event_throughput", "canvas_event_throughput", 1200, 600);
+      new TCanvas(Form("canvas_event_throughput_%s", std::string(medium).c_str()),
+                  Form("canvas_event_throughput_%s", std::string(medium).c_str()), 1200, 600);
   canvasEventThroughput->cd();
 
   // Title pad
@@ -153,11 +164,15 @@ void makeOverviewPlot(std::string_view resultsPathBase, std::string_view medium,
   //--------------------------------------------------------------------------//
   // DRAW THE MAIN GRAPH                                                      //
   //--------------------------------------------------------------------------//
+  int nBins = withUring ? 16 : 12;
+  int binStart = nBins / 4 + 1;
+  int binInterval = nBins / 2;
+
   maxEventThroughput *= 1.1;
 
-  TH1F *helperEventThroughput = new TH1F("", "", 16, 0, 16);
+  TH1F *helperEventThroughput = new TH1F("", "", nBins, 0, nBins);
   helperEventThroughput->GetXaxis()->SetTickSize(0);
-  helperEventThroughput->GetXaxis()->SetNdivisions(25);
+  helperEventThroughput->GetXaxis()->SetNdivisions(nBins * 2);
   helperEventThroughput->GetXaxis()->SetLabelOffset(0.01);
   helperEventThroughput->GetYaxis()->SetTickSize(0.01);
   helperEventThroughput->GetYaxis()->SetLabelSize(0.0375);
@@ -167,18 +182,14 @@ void makeOverviewPlot(std::string_view resultsPathBase, std::string_view medium,
   helperEventThroughput->SetMinimum(0);
   helperEventThroughput->SetMaximum(maxEventThroughput);
 
-  int nBins = helperEventThroughput->GetXaxis()->GetNbins();
-  int binInterval = nBins / readSpeedData.size();
-  int binCenter = binInterval - 1;
-
-  for (int i = 0; i <= nBins + 1; i++) {
-    if (i == binCenter) {
+  for (int i = 0; i <= nBins * 2 + 1; i++) {
+    if (i == binStart) {
       helperEventThroughput->GetXaxis()->ChangeLabel(i, -1, 0.035, 21, -1, -1, "no compression");
-    } else if (i == binCenter + binInterval) {
+    } else if (i == binStart + binInterval) {
       helperEventThroughput->GetXaxis()->ChangeLabel(i, -1, 0.035, 21, -1, -1, "zstd");
-    } else if (i == binCenter + 2 * binInterval) {
+    } else if (i == binStart + (2 * binInterval)) {
       helperEventThroughput->GetXaxis()->ChangeLabel(i, -1, 0.035, 21, -1, -1, "lzma (lvl 1)");
-    } else if (i == binCenter + 3 * binInterval) {
+    } else if (i == binStart + (3 * binInterval)) {
       helperEventThroughput->GetXaxis()->ChangeLabel(i, -1, 0.035, 21, -1, -1, "lzma (lvl 7)");
     } else {
       helperEventThroughput->GetXaxis()->ChangeLabel(i, -1, 0);
@@ -218,13 +229,13 @@ void makeOverviewPlot(std::string_view resultsPathBase, std::string_view medium,
           TLatex tval;
           tval.SetTextSize(0.02);
           tval.SetTextAlign(21);
-          tval.DrawLatex(x, 10000, val.str().c_str());
+          tval.DrawLatex(x, maxEventThroughput * 0.025, val.str().c_str());
         }
       }
     }
   }
 
-  for (unsigned i = binInterval; i < nBins; i += binInterval) {
+  for (unsigned i = 0; i < nBins; i += (binInterval / 2)) {
     TLine *line = new TLine(i, 0, i, maxEventThroughput);
     line->SetLineColor(kBlack);
     line->SetLineStyle(3);
@@ -235,10 +246,14 @@ void makeOverviewPlot(std::string_view resultsPathBase, std::string_view medium,
   TLegend *leg = new TLegend(0.825, 0.8, 0.955, 0.935);
   leg->AddEntry(readSpeedData[505]["ttree"].eventThroughputGraph, "TTree", "F");
   leg->AddEntry(readSpeedData[505]["rntuple"].eventThroughputGraph, "RNTuple", "F");
-  leg->AddEntry(readSpeedData[505]["rntuple_uring"].eventThroughputGraph, "RNTuple (w/ liburing)",
-                "F");
+  if (withUring) {
+    leg->AddEntry(readSpeedData[505]["rntuple_uring"].eventThroughputGraph, "RNTuple (w/ liburing)",
+                  "F");
+  }
   leg->SetNColumns(1);
   leg->SetMargin(0.15);
+  if (!withUring)
+    leg->SetTextSize(0.035);
   leg->Draw();
 
   TText l;
@@ -268,7 +283,8 @@ void makeOverviewPlot(std::string_view resultsPathBase, std::string_view medium,
   //--------------------------------------------------------------------------//
 
   TCanvas *canvasByteThroughput =
-      new TCanvas("canvas_byte_throughput", "canvas_byte_throughput", 1200, 600);
+      new TCanvas(Form("canvas_byte_throughput_%s", std::string(medium).c_str()),
+                  Form("canvas_byte_throughput_%s", std::string(medium).c_str()), 1200, 600);
   canvasByteThroughput->cd();
 
   // Title pad
@@ -313,9 +329,9 @@ void makeOverviewPlot(std::string_view resultsPathBase, std::string_view medium,
   //--------------------------------------------------------------------------//
   maxByteThroughput *= 1.25;
 
-  TH1F *helperByteThroughput = new TH1F("", "", 16, 0, 16);
+  TH1F *helperByteThroughput = new TH1F("", "", nBins, 0, nBins);
   helperByteThroughput->GetXaxis()->SetTickSize(0);
-  helperByteThroughput->GetXaxis()->SetNdivisions(25);
+  helperByteThroughput->GetXaxis()->SetNdivisions(nBins * 2);
   helperByteThroughput->GetXaxis()->SetLabelOffset(0.01);
   // helperByteThroughput->GetYaxis()->SetMaxDigits(4);
   helperByteThroughput->GetYaxis()->SetTickSize(0.01);
@@ -326,14 +342,14 @@ void makeOverviewPlot(std::string_view resultsPathBase, std::string_view medium,
   helperByteThroughput->SetMinimum(0);
   helperByteThroughput->SetMaximum(maxByteThroughput);
 
-  for (int i = 0; i <= nBins + 1; i++) {
-    if (i == binCenter) {
+  for (int i = 0; i <= nBins * 2 + 1; i++) {
+    if (i == binStart) {
       helperByteThroughput->GetXaxis()->ChangeLabel(i, -1, 0.035, 21, -1, -1, "no compression");
-    } else if (i == binCenter + binInterval) {
+    } else if (i == binStart + binInterval) {
       helperByteThroughput->GetXaxis()->ChangeLabel(i, -1, 0.035, 21, -1, -1, "zstd");
-    } else if (i == binCenter + 2 * binInterval) {
+    } else if (i == binStart + (2 * binInterval)) {
       helperByteThroughput->GetXaxis()->ChangeLabel(i, -1, 0.035, 21, -1, -1, "lzma (lvl 1)");
-    } else if (i == binCenter + 3 * binInterval) {
+    } else if (i == binStart + (3 * binInterval)) {
       helperByteThroughput->GetXaxis()->ChangeLabel(i, -1, 0.035, 21, -1, -1, "lzma (lvl 7)");
     } else {
       helperByteThroughput->GetXaxis()->ChangeLabel(i, -1, 0);
@@ -373,13 +389,13 @@ void makeOverviewPlot(std::string_view resultsPathBase, std::string_view medium,
           TLatex tval;
           tval.SetTextSize(0.02);
           tval.SetTextAlign(21);
-          tval.DrawLatex(x, 100, val.str().c_str());
+          tval.DrawLatex(x, maxByteThroughput * 0.025, val.str().c_str());
         }
       }
     }
   }
 
-  for (unsigned i = binInterval; i < nBins; i += binInterval) {
+  for (unsigned i = 0; i < nBins; i += (binInterval / 2)) {
     TLine *line = new TLine(i, 0, i, maxByteThroughput);
     line->SetLineColor(kBlack);
     line->SetLineStyle(3);
@@ -407,9 +423,9 @@ void makeOverviewPlot(std::string_view resultsPathBase, std::string_view medium,
 void plot_readspeed() {
   SetStyle();
 
-  // makeOverviewPlot("results/local_rdf", "SSD (local)", "mc", true);
-  // makeOverviewPlot("results/ssd_rdf", "SSD", "mc", true);
-  // makeOverviewPlot("results/rdf_cached", "cached", "data", true);
-  makeOverviewPlot("results/local_rdf", "SSD", "data", false);
-  // makeOverviewPlot("results/ssd_rdf", "SSD", "data", false);
+  plotOverview("results/local_rdf3", "SSD (local)", "data", false, false);
+  // plotOverview("results/ssd_rdf", "SSD", "data", true, true);
+  // plotOverview("results/rdf_cached", "cached", "mc", false);
+  // plotOverview("results/cached_rdf", "cached", "mc", false, false);
+  // plotOverview("results/xrootd_rdf", "XRootD", "mc", false, false);
 }

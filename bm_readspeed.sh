@@ -17,7 +17,8 @@ function bm_readspeed() {
 
   mkdir -p $results_dir
 
-  for phys_file_type in {data,mc}; do
+  phys_file_type=data
+  # for phys_file_type in {data,mc}; do
     for compression in {0,201,207,505}; do
       source_file=${SOURCE_DIR}/${phys_file_type}/DAOD_PHYS.${storage_type}.root~${compression}
       results_file=${results_dir}/readspeed_${phys_file_type}_${compression}.txt
@@ -37,7 +38,7 @@ function bm_readspeed() {
         echo "$results" >> $results_file
       done
     done
-  done
+  # done
 }
 
 function main() {
@@ -56,3 +57,5 @@ fi
 N_REPETITIONS=${2:-10}
 
 main ${3:-results/}
+
+# RDF.RPageSourceFile.bwRead|MB/s|bandwidth compressed bytes read per second|2928.577908
