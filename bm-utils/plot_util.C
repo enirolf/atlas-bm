@@ -20,6 +20,10 @@ const std::map<std::string, int> colors{{"ttree", TColor::GetColor(2, 103, 193)}
                                         {"rntuple", TColor::GetColor(200, 62, 77)},
                                         {"rntuple_uring", TColor::GetColor(59, 178, 115)},
                                         {"ratio", TColor::GetColor(59, 178, 115)},
+                                        {"ssd", TColor::GetColor(2, 103, 193)},
+                                        {"hdd", TColor::GetColor(200, 62, 77)},
+                                        {"tmpfs", TColor::GetColor(59, 178, 115)},
+                                        {"xrootd", TColor::GetColor(244, 184, 96)},
                                         {"filler", TColor::GetColor(0, 0, 0)}};
 const std::map<std::string, int> styles{
     {"ttree", 1001},         {"rntuple", 1001},          {"rntuple_mt", 3001},
@@ -42,7 +46,7 @@ void SetStyle() {
 
 Int_t GetTransparentColor() { return 1179; }
 
-int getXVal(std::string_view format, int compression, bool withUring) {
+int getXVal(std::string_view format, int compression, bool withUring = false) {
   int factor = withUring ? 4 : 3;
 
   int x;
@@ -60,13 +64,16 @@ int getXVal(std::string_view format, int compression, bool withUring) {
     x += 0 * factor;
     break;
   case 505:
-    x += 1 * factor;
+    // x += 1 * factor;
+    x += 0 * factor;
     break;
   case 201:
-    x += 2 * factor;
+    // x += 2 * factor;
+    x += 1 * factor;
     break;
   case 207:
-    x += 3 * factor;
+    // x += 3 * factor;
+    x += 2 * factor;
     break;
   }
   return x;
