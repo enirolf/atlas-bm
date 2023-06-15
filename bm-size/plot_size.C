@@ -15,8 +15,7 @@ void makePlot(const std::string &physFileType = "data", bool save = true) {
   //--------------------------------------------------------------------------//
   // PREPARE THE GRAPHS                                                       //
   //--------------------------------------------------------------------------//
-
-  std::ifstream file("results/size_" + physFileType + ".txt");
+  std::ifstream file("results/size_" + physFileType + ".data");
   std::string format;
   int compression;
   float nEvents, nCols, onDiskSize, inMemorySize;
@@ -35,7 +34,6 @@ void makePlot(const std::string &physFileType = "data", bool save = true) {
 
     if (compression == 0)
       continue;
-    // eventSize = inMemorySize / nEvents;
     else
       eventSize = onDiskSize / nEvents;
     dataMap[compression][format] = eventSize / 1024;
@@ -60,20 +58,17 @@ void makePlot(const std::string &physFileType = "data", bool save = true) {
         x = 2;
 
       switch (compression) {
-      case 0:
+      case 404:
         x += 0;
         break;
       case 505:
-        // x += 3;
-        x += 0;
-        break;
-      case 201:
-        // x += 6;
         x += 3;
         break;
-      case 207:
-        // x += 9;
+      case 201:
         x += 6;
+        break;
+      case 207:
+        x += 9;
         break;
       }
 
@@ -89,20 +84,17 @@ void makePlot(const std::string &physFileType = "data", bool save = true) {
 
     int x;
     switch (compression) {
-    case 0:
+    case 404:
       x = 0;
       break;
     case 505:
-      x = 0;
-      // x = 1;
+      x = 1;
       break;
     case 201:
-      x = 1;
-      // x = 2;
+      x = 2;
       break;
     case 207:
-      x = 2;
-      // x = 3;
+      x = 3;
       break;
     }
 
@@ -122,28 +114,25 @@ void makePlot(const std::string &physFileType = "data", bool save = true) {
   //--------------------------------------------------------------------------//
   // SETUP THE CANVAS                                                         //
   //--------------------------------------------------------------------------//
-
-  TCanvas *canvas = new TCanvas(Form("canvas_%s", physFileType.c_str()), "canvas", 1200);
+  TCanvas *canvas = new TCanvas(Form("canvas_%s", physFileType.c_str()), "canvas", 1200, 1200);
   canvas->cd();
   canvas->SetFillStyle(4000);
 
-  // TTree and RNTuple on-disk size (no comp. + zstd)
-  auto padDiskSize = new TPad("padDiskSize", "padDiskSize", 0.0, 0.40, 1.0, 1.0);
-  padDiskSize->SetTopMargin(0.03);
+  auto padDiskSize = new TPad("padDiskSize", "padDiskSize", 0.0, 0.50, 1.0, 1.0);
+  padDiskSize->SetTopMargin(0.12);
   padDiskSize->SetBottomMargin(0.05);
-  padDiskSize->SetLeftMargin(0.075);
-  padDiskSize->SetRightMargin(0.01);
+  padDiskSize->SetLeftMargin(0.1);
+  padDiskSize->SetRightMargin(0.02);
   padDiskSize->SetFillStyle(4000);
   padDiskSize->SetFrameFillStyle(4000);
   padDiskSize->Draw();
   canvas->cd();
 
-  // TTree vs RNTuple on-disk size ratio (no comp. + zstd)
-  auto padDiskRatio = new TPad("padDiskRatio", "padDiskRatio", 0.0, 0.0, 1.0, 0.39);
+  auto padDiskRatio = new TPad("padDiskRatio", "padDiskRatio", 0.0, 0.0, 1.0, 0.49);
   padDiskRatio->SetTopMargin(0.05);
-  padDiskRatio->SetBottomMargin(0.2);
-  padDiskRatio->SetLeftMargin(0.075);
-  padDiskRatio->SetRightMargin(0.01);
+  padDiskRatio->SetBottomMargin(0.3);
+  padDiskRatio->SetLeftMargin(0.1);
+  padDiskRatio->SetRightMargin(0.02);
   padDiskRatio->SetFillStyle(4000);
   padDiskRatio->SetFrameFillStyle(4000);
   padDiskRatio->Draw();
@@ -152,11 +141,12 @@ void makePlot(const std::string &physFileType = "data", bool save = true) {
   //--------------------------------------------------------------------------//
   // DRAW THE MAIN ON-DISK GRAPH                                              //
   //--------------------------------------------------------------------------//
-
   padDiskSize->cd();
   gPad->SetGridy();
 
-  TH1F *helperDiskSize = new TH1F("", "", 9, 0, 9);
+  int nBars = 12;
+
+  TH1F *helperDiskSize = new TH1F("", "", nBars, 0, nBars);
   helperDiskSize->GetXaxis()->SetNdivisions(2);
   helperDiskSize->GetXaxis()->SetLabelSize(0);
   helperDiskSize->GetXaxis()->SetTickSize(0);
@@ -164,13 +154,14 @@ void makePlot(const std::string &physFileType = "data", bool save = true) {
     helperDiskSize->GetYaxis()->SetTitle("Average event size [kB]");
   else
     helperDiskSize->GetYaxis()->SetTitle("Average event size [B]");
-  helperDiskSize->GetYaxis()->CenterTitle();
+  helperDiskSize->GetYaxis()->SetNdivisions(6);
   helperDiskSize->GetYaxis()->SetTickSize(0.01);
-  helperDiskSize->GetYaxis()->SetLabelSize(0.075);
+  helperDiskSize->GetYaxis()->SetLabelSize(0.065);
   helperDiskSize->GetYaxis()->SetTitleSize(0.08);
-  helperDiskSize->GetYaxis()->SetTitleOffset(0.45);
+  helperDiskSize->GetYaxis()->SetTitleOffset(0.6);
   helperDiskSize->SetMinimum(0);
-  helperDiskSize->SetMaximum(maxSize * 1.1);
+  helperDiskSize->SetMaximum(45);
+
   helperDiskSize->Draw();
 
   for (const auto &[compression, formats] : sizeGraphMap) {
@@ -182,74 +173,81 @@ void makePlot(const std::string &physFileType = "data", bool save = true) {
       graph->Draw("B1");
       graph->Draw("P");
 
-      // double x, y;
-      // graph->GetPoint(0, x, y);
+      double x, y;
+      graph->GetPoint(0, x, y);
 
-      // std::ostringstream val;
-      // val.precision(1);
-      // val << std::fixed << y;
-      // if (maxInputSize > 1024)
-      //   val << " kB";
-      // else
-      //   val << " B";
+      if (x == 0) continue;
 
-      // TLatex tval;
-      // tval.SetTextSize(0.05);
-      // tval.SetTextColor(kWhite);
-      // tval.SetTextAlign(23);
-      // tval.DrawLatex(x, maxSize * 0.07, val.str().c_str());
+      std::ostringstream val;
+      val.precision(1);
+      val << std::fixed << y;
+
+      TLatex tval;
+      tval.SetTextSize(0.065);
+      tval.SetTextColor(kWhite);
+      tval.SetTextAlign(23);
+      tval.DrawLatex(x, maxSize * 0.1, val.str().c_str());
     }
   }
 
-  for (unsigned i = 3; i < 12; i += 3) {
-    TLine *line = new TLine(i, 0, i, maxSize * 1.1);
+  TLatex title;
+  title.SetTextSize(0.08);
+  title.SetTextAlign(23);
+  title.SetTextFont(42);
+  if (physFileType == "mc")
+    title.DrawLatex(6, 50, "DAOD_PHYS storage efficiency, MC");
+  else
+    title.DrawLatex(6, 50, "DAOD_PHYS storage efficiency, data");
+
+  for (unsigned i = 3; i < nBars; i += 3) {
+    TLine *line = new TLine(i, 0, i, 45);
     line->SetLineColor(kBlack);
     line->SetLineStyle(3);
     line->SetLineWidth(1);
     line->Draw();
   }
 
-  TLegend *leg = new TLegend(0.875, 0.725, 0.985, 0.955);
+  TLegend *leg = new TLegend(0.8, 0.65, 0.97, 0.86);
   leg->AddEntry(sizeGraphMap[505]["ttree"], "TTree", "F");
   leg->AddEntry(sizeGraphMap[505]["rntuple"], "RNTuple", "F");
   leg->SetBorderSize(1);
-  // leg->SetTextSize(0.035);
+  leg->SetTextSize(0.065);
   leg->Draw();
 
   //--------------------------------------------------------------------------//
   // DRAW THE RATIO ON-DISK GRAPH                                            //
   //--------------------------------------------------------------------------//
-
   padDiskRatio->cd();
   gPad->SetGridy();
 
-  TH1F *helperDiskRatio = new TH1F("", "", 6, 1, 7);
+  nBars = 8;
+
+  TH1F *helperDiskRatio = new TH1F("", "", nBars, 1, nBars + 1);
   helperDiskRatio->SetMinimum(0);
   helperDiskRatio->SetMaximum(std::max(maxRatio * 1.1, 1.1));
+  helperDiskRatio->GetXaxis()->SetTitle("Compression method");
+  helperDiskRatio->GetXaxis()->SetTitleSize(0.08);
+  helperDiskRatio->GetXaxis()->SetTitleOffset(1.6);
   helperDiskRatio->GetXaxis()->SetTickSize(0);
-  helperDiskRatio->GetXaxis()->SetLabelOffset(0.1);
+  helperDiskRatio->GetXaxis()->SetLabelOffset(0.06);
   helperDiskRatio->GetYaxis()->SetTitle("RNTuple / TTree");
-  helperDiskRatio->GetYaxis()->CenterTitle();
   helperDiskRatio->GetYaxis()->SetTickSize(0.005);
   helperDiskRatio->GetYaxis()->SetNdivisions(5);
-  helperDiskRatio->GetYaxis()->SetLabelSize(0.125);
-  helperDiskRatio->GetYaxis()->SetTitleSize(0.125);
-  helperDiskRatio->GetYaxis()->SetTitleOffset(0.275);
+  helperDiskRatio->GetYaxis()->SetLabelSize(0.065);
+  helperDiskRatio->GetYaxis()->SetTitleSize(0.08);
+  helperDiskRatio->GetYaxis()->SetTitleOffset(0.6);
 
-  float labelSize = 0.125;
+  float labelSize = 0.08;
 
   for (int i = 0; i <= helperDiskRatio->GetXaxis()->GetNlabels(); i++) {
     if (i == 2) {
-      // helperDiskRatio->GetXaxis()->ChangeLabel(i, -1, labelSize, -1, -1, -1, "no compression");
-      helperDiskRatio->GetXaxis()->ChangeLabel(i, -1, labelSize, -1, -1, -1, "zstd");
+      helperDiskRatio->GetXaxis()->ChangeLabel(i, -1, labelSize, -1, -1, -1, "lz4");
     } else if (i == 4) {
-      // helperDiskRatio->GetXaxis()->ChangeLabel(i, -1, labelSize, -1, -1, -1, "zstd");
-      helperDiskRatio->GetXaxis()->ChangeLabel(i, -1, labelSize, -1, -1, -1, "lzma (lvl 1)");
+      helperDiskRatio->GetXaxis()->ChangeLabel(i, -1, labelSize, -1, -1, -1, "zstd*");
     } else if (i == 6) {
-      // helperDiskRatio->GetXaxis()->ChangeLabel(i, -1, labelSize, -1, -1, -1, "lzma (lvl 1)");
+      helperDiskRatio->GetXaxis()->ChangeLabel(i, -1, labelSize, -1, -1, -1, "lzma (lvl 1)");
+    } else if (i == 8) {
       helperDiskRatio->GetXaxis()->ChangeLabel(i, -1, labelSize, -1, -1, -1, "lzma (lvl 7)");
-      // } else if (i == 8) {
-      //   helperDiskRatio->GetXaxis()->ChangeLabel(i, -1, labelSize, -1, -1, -1, "lzma (lvl 7)");
     } else {
       helperDiskRatio->GetXaxis()->ChangeLabel(i, -1, 0);
     }
@@ -274,13 +272,19 @@ void makePlot(const std::string &physFileType = "data", bool save = true) {
     val << "%";
 
     TLatex tval;
-    tval.SetTextSize(0.125);
+    tval.SetTextSize(0.1);
     tval.SetTextColor(kWhite);
     tval.SetTextAlign(23);
-    tval.DrawLatex(x, maxRatio * 0.25, val.str().c_str());
+    tval.DrawLatex(x, maxRatio * 0.2, val.str().c_str());
   }
 
-  TLine *lineOneDisk = new TLine(1, 1, 7, 1);
+  TText zstdAnnot;
+  zstdAnnot.SetTextSize(0.06);
+  zstdAnnot.SetTextAlign(33);
+  zstdAnnot.SetTextFont(42);
+  zstdAnnot.DrawTextNDC(0.98, 0.05, "*current ATLAS default");
+
+  TLine *lineOneDisk = new TLine(1, 1, nBars + 1, 1);
   lineOneDisk->SetLineColor(kBlack);
   lineOneDisk->SetLineStyle(1);
   lineOneDisk->SetLineWidth(1);
@@ -299,8 +303,11 @@ void makePlot(const std::string &physFileType = "data", bool save = true) {
   //--------------------------------------------------------------------------//
 
   if (save) {
-    canvas->Print(Form("figures/size_%s.pdf", physFileType.c_str()));
-    canvas->Print(Form("figures/size_%s.png", physFileType.c_str()));
+    TFile *output = TFile::Open(Form("figures/size_%s.root", physFileType.c_str()), "RECREATE");
+    output->cd();
+    canvas->Write();
+    output->Close();
+    canvas->Print(Form("figures/chep_proc/size_%s.pdf", physFileType.c_str()));
   }
 }
 

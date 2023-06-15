@@ -3,21 +3,22 @@
 function write_mc_trees() {
     source_file=$1
     target_file_base=$2
-    for compression in {0,201,207,505}; do
-        cmd="hadd -f${compression} -O ${target_file_base}~${compression} ${source_file}"
+    # for compression in {0,201,207,505}; do
+        cmd="hadd -f404 -O ${target_file_base}~404 ${source_file}"
         echo $cmd
         eval $cmd
-    done
+    # done
 }
 
 function write_data_trees() {
     source_file=$1
     target_file_base=$2
-    for compression in {0,201,207,505}; do
-        cmd="hadd -f${compression} -O ${target_file_base}~${compression} ${source_file}"
+    # for compression in {0,201,207,505}; do
+        # cmd="hadd -f${compression} -O ${target_file_base}~${compression} ${source_file}"
+        cmd="hadd -f404 -O ${target_file_base}~404 ${source_file}"
         echo $cmd
         eval $cmd
-    done
+    # done
 }
 
 write_mc_trees \
