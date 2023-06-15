@@ -81,9 +81,12 @@ if __name__ == "__main__":
                 lines = f.readlines()
                 wall_times = get_rdf_wall_times(lines)
 
-                if "ttree" in root:
-                    read_rates = get_ttree_uncompressed_read_rates(lines)
-                else:
-                    read_rates = get_rntuple_uncompressed_read_rates(lines)
+            #     if "ttree" in root:
+            #         read_rates = get_ttree_uncompressed_read_rates(lines)
+            #     else:
+            #         read_rates = get_rntuple_uncompressed_read_rates(lines)
 
-            write_stats(list(zip(wall_times, read_rates)), path[:-4] + ".data")
+            # write_stats(list(zip(wall_times, read_rates)), path[:-4] + ".data")
+
+            with open(path[:-4] + ".data", "w") as f:
+                f.writelines(wt + "\n" for wt in wall_times)
