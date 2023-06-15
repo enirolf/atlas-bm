@@ -5,10 +5,9 @@
 
 using ROOT::Experimental::RNTupleImporter;
 
-// const int compressionSettings[] = {0, 505, 201, 207};
-const int compressionSettings[] = {505};
+const int compressionSettings[] = {0,201,207,404,505};
 
-void import(std::string sourceBasePath, std::string targetBasePath, std::size_t clusterSize) {
+void import(std::string sourceBasePath, std::string targetBasePath, std::size_t clusterSize=50*1000*1000) {
   gErrorIgnoreLevel = kError;
   gInterpreter->ProcessLine("#include <xAODMissingET/versions/MissingETCompositionBase.h>");
   gInterpreter->ProcessLine("#include <xAODMissingET/versions/MissingETBase.h>");
@@ -20,7 +19,7 @@ void import(std::string sourceBasePath, std::string targetBasePath, std::size_t 
 
     std::filesystem::remove(targetPath);
 
-    auto importer = RNTupleImporter::Create(sourcePath, "CollectionTree", targetPath).Unwrap();
+    auto importer = RNTupleImporter::Create(sourcePath, "CollectionTree", targetPath);
     importer->SetNTupleName("RNT:CollectionTree");
     importer->SetIsQuiet(true);
     auto writeOptions = importer->GetWriteOptions();
@@ -34,10 +33,6 @@ void import(std::string sourceBasePath, std::string targetBasePath, std::size_t 
 }
 
 void write_ntuples() {
-  import("data/daod_phys_benchmark_files/data/DAOD_PHYS.ttree.root",
-         "data/misc/DAOD_PHYS.rntuple100.root", 100 * 1000 * 1000);
-  import("data/daod_phys_benchmark_files/data/DAOD_PHYS.ttree.root",
-         "data/misc/DAOD_PHYS.rntuple150.root", 150 * 1000 * 1000);
-  // import("data/daod_phys_benchmark_files/mc/DAOD_PHYS.ttree.root",
-  //        "data/daod_phys_benchmark_files/mc/DAOD_PHYS.rntuple.root");
+  import("data/daod_phys_benchmark_files/data/DAOD_PHYS.ttree.root", "data/daod_phys_benchmark_files/data/DAOD_PHYS.rntuple.root");
+  import("data/daod_phys_benchmark_files/mc/DAOD_PHYS.ttree.root", "data/daod_phys_benchmark_files/mc/DAOD_PHYS.rntuple.root");
 }

@@ -12,22 +12,24 @@ enum EnumGraphTypes {
 };
 
 enum EnumCompression { kZipNone, kZipLz4, kZipZstd, kZipZlib, kZipLzma };
-const char *kCompressionNames[] = {"uncompressed", "lz4", "zstd", "zlib", "lzma"};
+const char *kCompressionNames[] = {"uncompressed", "lz4", "zstd", "zlib", "lzma", "lz4"};
 
 enum EnumPlotColors { kPlotRed = kRed - 3, kPlotBlue = kBlue - 3, kPlotGreen = kGreen - 2 };
 
 const std::map<std::string, int> colors{{"ttree", TColor::GetColor(2, 103, 193)},
                                         {"rntuple", TColor::GetColor(200, 62, 77)},
+                                        {"ttree_bulk", TColor::GetColor(200, 62, 77)},
                                         {"rntuple_uring", TColor::GetColor(59, 178, 115)},
                                         {"ratio", TColor::GetColor(59, 178, 115)},
+                                        {"rntuple_uring_bulk", TColor::GetColor(244, 184, 96)},
                                         {"ssd", TColor::GetColor(2, 103, 193)},
                                         {"hdd", TColor::GetColor(200, 62, 77)},
                                         {"tmpfs", TColor::GetColor(59, 178, 115)},
                                         {"xrootd", TColor::GetColor(244, 184, 96)},
                                         {"filler", TColor::GetColor(0, 0, 0)}};
 const std::map<std::string, int> styles{
-    {"ttree", 1001},         {"rntuple", 1001},          {"rntuple_mt", 3001},
-    {"rntuple_uring", 1001}, {"rntuple_mt_uring", 3008}, {"filler", 1001}};
+    {"ttree", 1001},         {"rntuple", 1001},          {"ttree_bulk", 3001},
+    {"rntuple_uring", 1001}, {"rntuple_uring_bulk", 3008}, {"filler", 1001}};
 
 float StdErr(ROOT::VecOps::RVec<float> vals) {
   int nVal = vals.size();
@@ -63,17 +65,21 @@ int getXVal(std::string_view format, int compression, bool withUring = false) {
   case 0:
     x += 0 * factor;
     break;
-  case 505:
+  case 404:
     // x += 1 * factor;
     x += 0 * factor;
     break;
-  case 201:
+  case 505:
     // x += 2 * factor;
     x += 1 * factor;
     break;
-  case 207:
+  case 201:
     // x += 3 * factor;
     x += 2 * factor;
+    break;
+  case 207:
+    // x += 4 * factor;
+    x += 3 * factor;
     break;
   }
   return x;

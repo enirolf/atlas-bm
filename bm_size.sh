@@ -7,7 +7,7 @@ function bm_size() {
   for phys_file_type in {data,mc}; do
     results_file=results/size_${phys_file_type}.txt
 
-    for compression in {0,201,207,505}; do
+    for compression in {0,201,207,404,505}; do
       source_file=data/daod_phys_benchmark_files/${phys_file_type}/DAOD_PHYS.${storage_type}.root~${compression}
 
       echo "Running for $storage_type ($phys_file_type, $compression)..."
