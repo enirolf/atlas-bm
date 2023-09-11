@@ -30,9 +30,8 @@ using ROOT::Experimental::RNTuple;
 using ROOT::Experimental::RNTupleModel;
 using ROOT::Experimental::RNTupleReader;
 using ROOT::Experimental::RNTupleView;
-// using namespace ROOT::VecOps;
 
-static void showHist(TH1F *hist) {
+static void showHist(TH1D *hist) {
   auto app = TApplication("", nullptr, nullptr);
   auto c = new TCanvas("c", "", 700, 750);
   hist->DrawCopy();
@@ -57,20 +56,20 @@ void bmRDFReadspeed(ROOT::RDataFrame &rdf, bool isNTuple) {
                                                       "DiTauJetsLowPt",
                                                       "TauNeutralParticleFlowObjects",
                                                       "TauNeutralParticleFlowObjects_MuonRM"};
-  const std::string sep = isNTuple ? ":" : ".";
+  const std::string sep = isNTuple ? "_" : ".";
 
   // Need to get access to the RInterface object.
   auto rdfEL = rdf.Define("NOOP", []() { return true; });
-  std::vector<ROOT::RDF::RResultPtr<TH1D>> histInvMasses;
+  std::vector<ROOT::RDF::RResultPtr<TH1D>> hists;
 
   for (const auto c : containers) {
-    rdfEL = rdfEL.Define(
-        "invMass" + std::string(c), ROOT::VecOps::InvariantMass<float>,
-        {std::string(c) + "AuxDyn" + sep + "pt", std::string(c) + "AuxDyn" + sep + "eta",
-         std::string(c) + "AuxDyn" + sep + "m", std::string(c) + "AuxDyn" + sep + "phi"});
-    histInvMasses.emplace_back(rdfEL.Histo1D<float>({"histInvMas", "histInvMas", 128, 0, 20000},
-                                                    "invMass" + std::string(c)));
+    hists.emplace_back(rdfEL.Histo1D<ROOT::RVec<float>>({"hPt", "hPt", 128, 0, 20000}, std::string(c) + "AuxDyn" + sep + "pt"));
+    hists.emplace_back(rdfEL.Histo1D<ROOT::RVec<float>>({"hEta", "hEta", 128, 0, 20000}, std::string(c) + "AuxDyn" + sep + "eta"));
+    hists.emplace_back(rdfEL.Histo1D<ROOT::RVec<float>>({"hPhi", "hPhi", 128, 0, 20000}, std::string(c) + "AuxDyn" + sep + "phi"));
+    hists.emplace_back(rdfEL.Histo1D<ROOT::RVec<float>>({"hM", "hM", 128, 0, 20000}, std::string(c) + "AuxDyn" + sep + "m"));
   }
+
+
 
   std::cout << "Events processed: " << *rdfEL.Count() << std::endl;
 }
@@ -121,7 +120,6 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  // auto logChannel = ROOT::Detail::RDF::RDFLogChannel("");
   auto verbosity = ROOT::Experimental::RLogScopedVerbosity(ROOT::Detail::RDF::RDFLogChannel(),
                                                            ROOT::Experimental::ELogLevel::kInfo);
 

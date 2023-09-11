@@ -7,9 +7,8 @@ function drop_caches() {
 }
 
 function bm_readspeed() {
-  storage_name=$1
-  storage_type=$2
-  results_dir=$3/$storage_type
+  storage_type=$1
+  results_dir=$2/$storage_type
 
   if [ "$(root-config --has-uring)" = "yes" ]; then
     results_dir=${results_dir}_uring
@@ -18,7 +17,7 @@ function bm_readspeed() {
   mkdir -p $results_dir
 
   for phys_file_type in {data,mc}; do
-    for compression in {0,201,207,505}; do
+    for compression in {0,201,207,404,505}; do
       source_file=${SOURCE_DIR}/${phys_file_type}/DAOD_PHYS.${storage_type}.root~${compression}
       results_file=${results_dir}/readspeed_${phys_file_type}_${compression}.txt
 
@@ -33,7 +32,7 @@ function bm_readspeed() {
           continue
         fi
 
-        results=$(bin/bm_readspeed -i $source_file -n $storage_name -s $storage_type 2>&1)
+        results=$(bin/bm_readspeed -i $source_file -n CollectionTree -s $storage_type 2>&1)
         echo "$results" >> $results_file
       done
     done
@@ -41,8 +40,8 @@ function bm_readspeed() {
 }
 
 function main() {
-  bm_readspeed CollectionTree ttree $1
-  bm_readspeed RNT:CollectionTree rntuple $1
+  bm_readspeed ttree $1
+  bm_readspeed rntuple $1
 }
 
 
