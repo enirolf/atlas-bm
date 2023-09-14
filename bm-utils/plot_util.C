@@ -69,13 +69,17 @@ int getXVal(std::string_view format, int compression, bool withUring = false) {
     // x += 1 * factor;
     x += 0 * factor;
     break;
+  case 404:
+    // x += 1 * factor;
+    x += 1 * factor;
+    break;
   case 201:
     // x += 2 * factor;
-    x += 1 * factor;
+    x += 2 * factor;
     break;
   case 207:
     // x += 3 * factor;
-    x += 2 * factor;
+    x += 3 * factor;
     break;
   }
   return x;

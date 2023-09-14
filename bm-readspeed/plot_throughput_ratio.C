@@ -47,8 +47,8 @@ void drawGraph(std::map<int, std::map<std::string, TGraphErrors *>> &graphs, flo
   pad->Draw();
   canvas->cd();
 
-  int nBins = 15;
-  int binStart = 6;
+  int nBins = 20;
+  int binStart = 8;
   int binInterval = 10;
 
   //--------------------------------------------------------------------------//
@@ -75,8 +75,10 @@ void drawGraph(std::map<int, std::map<std::string, TGraphErrors *>> &graphs, flo
     if (i == binStart) {
       helper->GetXaxis()->ChangeLabel(i, -1, labelSize, 21, -1, -1, "zstd");
     } else if (i == binStart + binInterval) {
-      helper->GetXaxis()->ChangeLabel(i, -1, labelSize, 21, -1, -1, "lzma (lvl 1)");
+      helper->GetXaxis()->ChangeLabel(i, -1, labelSize, 21, -1, -1, "lz4");
     } else if (i == binStart + (2 * binInterval)) {
+      helper->GetXaxis()->ChangeLabel(i, -1, labelSize, 21, -1, -1, "lzma (lvl 1)");
+    } else if (i == binStart + (3 * binInterval)) {
       helper->GetXaxis()->ChangeLabel(i, -1, labelSize, 21, -1, -1, "lzma (lvl 7)");
     } else {
       helper->GetXaxis()->ChangeLabel(i, -1, 0);
@@ -172,7 +174,7 @@ void plot(std::string_view resultsPathBase, std::string_view physFileType = "dat
 
   auto media = std::vector<std::string>{"ssd", "hdd", "tmpfs", "xrootd"};
 
-  for (const int compression : {505, 201, 207}) {
+  for (const int compression : {505, 404, 201, 207}) {
     for (const auto medium : media) {
       std::string ttreeResultsFilePath = std::string(resultsPathBase) + "/" + medium +
                                          "/ttree/readspeed_" + std::string(physFileType) + "_" +
@@ -279,11 +281,14 @@ void plot(std::string_view resultsPathBase, std::string_view physFileType = "dat
       case 505:
         x += 0;
         break;
-      case 201:
+      case 404:
         x += 5;
         break;
-      case 207:
+      case 201:
         x += 10;
+        break;
+      case 207:
+        x += 15;
         break;
       }
 
@@ -312,5 +317,5 @@ void plot(std::string_view resultsPathBase, std::string_view physFileType = "dat
 void plot_throughput_ratio() {
   SetStyle();
 
-  plot("results/chep", "data", true);
+  plot("results/chep-proc", "data", false);
 }
