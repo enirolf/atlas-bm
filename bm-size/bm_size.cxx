@@ -18,7 +18,7 @@ void bmNTupleSize(const std::string ntuplePath, const std::string ntupleName) {
 
   std::cout << "rntuple\t" << inspector->GetCompressionSettings() << "\t"
             << descriptor->GetNEntries() << "\t" << descriptor->GetNFields() << "\t"
-            << inspector->GetOnDiskSize() << "\t" << inspector->GetInMemorySize() << std::endl;
+            << inspector->GetCompressedSize() << "\t" << inspector->GetUncompressedSize() << std::endl;
 }
 
 void bmTreeSize(const std::string treePath, const std::string treeName) {
@@ -34,15 +34,16 @@ void bmTreeSize(const std::string treePath, const std::string treeName) {
 }
 
 static void printUsage(std::string_view prog) {
-  std::cout << "USAGE: " << prog << " -i INPUT_PATH -n STORE_NAME -s (ttree|rntuple)" << std::endl;
+  std::cout << "USAGE: " << prog << " (-h|-i INPUT_PATH -s (ttree|rntuple) [-n STORE_NAME])" << std::endl;
 }
 
 int main(int argc, char **argv) {
   // Suppress (irrelevant) warnings
   gErrorIgnoreLevel = kError;
 
-  std::string inputPath, storeName;
-  bool checkNTuple = false;
+  std::string inputPath;
+  std::string storeName = "CollectionTree";
+  bool isRNTuple = false;
 
   int c;
   while ((c = getopt(argc, argv, "hi:n:s:")) != -1) {
@@ -58,7 +59,7 @@ int main(int argc, char **argv) {
       break;
     case 's':
       if (strcmp(optarg, "rntuple") == 0) {
-        checkNTuple = true;
+        isRNTuple = true;
       } else if (strcmp(optarg, "ttree") != 0) {
         std::cerr << "ERROR: Unknown storage mode " << optarg << std::endl;
         return 1;
@@ -82,7 +83,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  if (checkNTuple) {
+  if (isRNTuple) {
     bmNTupleSize(inputPath, storeName);
   } else {
     bmTreeSize(inputPath, storeName);
