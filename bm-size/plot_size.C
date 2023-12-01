@@ -307,7 +307,7 @@ void makePlot(const std::string &physFileType = "data", bool save = true) {
     output->cd();
     canvas->Write();
     output->Close();
-    canvas->Print(Form("figures/chep_proc/size_%s.pdf", physFileType.c_str()));
+    canvas->Print(Form("figures/size_%s.pdf", physFileType.c_str()));
   }
 }
 

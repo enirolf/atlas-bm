@@ -174,7 +174,7 @@ void drawGraph(std::map<int, std::map<std::string, TGraphErrors *>> &graphs, flo
   // SAVE THE PLOT                                                            //
   //--------------------------------------------------------------------------//
   if (save) {
-    canvas->Print(Form("figures/chep_proc/readspeed_throughput_ratio_%s_%s.pdf", std::string(plotKind).c_str(), std::string(physFileType).c_str()));
+    canvas->Print(Form("figures/readspeed_throughput_ratio_%s_%s.pdf", std::string(plotKind).c_str(), std::string(physFileType).c_str()));
   }
 }
 

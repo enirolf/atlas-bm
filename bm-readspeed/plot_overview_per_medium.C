@@ -318,7 +318,7 @@ void drawByteThroughput(std::map<std::string, ReadSpeedData> &readSpeedData,
   // SAVE THE PLOT                                                            //
   //--------------------------------------------------------------------------//
   if (save) {
-    canvas->Print(Form("figures/chep_proc/readspeed_byte_throughput_%s_%s.pdf",
+    canvas->Print(Form("figures/readspeed_byte_throughput_%s_%s.pdf",
                        std::string(medium).c_str(),
                        std::string(physFileType).c_str()));
   }
