@@ -30,19 +30,17 @@ void drawEventThroughput(
   //--------------------------------------------------------------------------//
   // SET UP THE CANVAS                                                        //
   //--------------------------------------------------------------------------//
-
   TCanvas *canvas = new TCanvas(
       Form("canvas_event_throughput_%s", std::string(medium).c_str()),
-      Form("canvas_event_throughput_%s", std::string(medium).c_str()), 1200,
-      800);
+      Form("canvas_event_throughput_%s", std::string(medium).c_str()), 1200, 800);
   canvas->SetFillStyle(4000);
   canvas->cd();
 
   // TTree vs RNTuple read throughput speed
   auto pad = new TPad("pad", "pad", 0.0, 0.0, 1.0, 1.0);
-  pad->SetTopMargin(0.055);
-  pad->SetBottomMargin(0.08);
-  pad->SetLeftMargin(0.09);
+  pad->SetTopMargin(0.1);
+  pad->SetBottomMargin(0.18);
+  pad->SetLeftMargin(0.1);
   pad->SetRightMargin(0.02);
   pad->SetFillStyle(4000);
   pad->SetFrameFillStyle(4000);
@@ -59,6 +57,9 @@ void drawEventThroughput(
   float binOffset = withUring ? 0 : 0.5;
 
   TH1F *helper = new TH1F("", "", nBins, binOffset, nBins + binOffset);
+  helper->GetXaxis()->SetTitle("Compression method");
+  helper->GetXaxis()->SetTitleSize(0.05);
+  helper->GetXaxis()->SetTitleOffset(1.45);
   helper->GetXaxis()->SetTickSize(0);
   helper->GetXaxis()->SetNdivisions(nBins);
   helper->GetXaxis()->SetLabelOffset(0.025);
@@ -67,7 +68,7 @@ void drawEventThroughput(
   helper->GetYaxis()->SetLabelSize(0.05);
   helper->GetYaxis()->SetTitle("Events / s");
   helper->GetYaxis()->SetTitleSize(0.05);
-  helper->GetYaxis()->SetTitleOffset(0.9);
+  helper->GetYaxis()->SetTitleOffset(1.);
   helper->SetMinimum(0);
   helper->SetMaximum(maxThroughput);
 
@@ -75,9 +76,9 @@ void drawEventThroughput(
 
   for (int i = 0; i <= nBins + 1; i++) {
     if (i == binStart) {
-      helper->GetXaxis()->ChangeLabel(i, -1, labelSize, 21, -1, -1, "zstd");
-    } else if (i == binStart + binInterval) {
       helper->GetXaxis()->ChangeLabel(i, -1, labelSize, 21, -1, -1, "lz4");
+    } else if (i == binStart + binInterval) {
+      helper->GetXaxis()->ChangeLabel(i, -1, labelSize, 21, -1, -1, "zstd*");
     } else if (i == binStart + (2 * binInterval)) {
       helper->GetXaxis()->ChangeLabel(i, -1, labelSize, 21, -1, -1,
                                       "lzma (lvl 1)");
@@ -120,13 +121,19 @@ void drawEventThroughput(
           val << "#times" << std::fixed << y;
 
           TLatex tval;
-          tval.SetTextColor(kWhite);
           if (withUring)
-            tval.SetTextSize(0.03);
-          else
             tval.SetTextSize(0.04);
+          else
+            tval.SetTextSize(0.045);
           tval.SetTextAlign(21);
-          tval.DrawLatex(x, maxThroughput * 0.025, val.str().c_str());
+
+          if (y < 0.7) {
+            tval.SetTextColor(kBlack);
+            tval.DrawLatex(x, maxThroughput * 0.05, val.str().c_str());
+          } else {
+            tval.SetTextColor(kWhite);
+            tval.DrawLatex(x, maxThroughput * 0.025, val.str().c_str());
+          }
         }
       }
     }
@@ -140,7 +147,7 @@ void drawEventThroughput(
     line->Draw();
   }
 
-  TLegend *leg = new TLegend(0.6, 0.8, 0.97, 0.935);
+  TLegend *leg = new TLegend(0.8, 0.75, 0.97, 0.88);
   leg->AddEntry(readSpeedData[505]["ttree"].throughputGraph, "TTree", "F");
   leg->AddEntry(readSpeedData[505]["rntuple"].throughputGraph, "RNTuple", "F");
   if (withUring) {
@@ -150,15 +157,30 @@ void drawEventThroughput(
   leg->SetNColumns(1);
   leg->Draw();
 
-  TText l;
-  l.SetTextSize(0.025);
-  l.SetTextAlign(13);
-  l.DrawTextNDC(0.9, 0.785, "95% CL");
+  TText clAnnot;
+  clAnnot.SetTextSize(0.03);
+  clAnnot.SetTextAlign(33);
+  clAnnot.SetTextFont(42);
+  clAnnot.DrawTextNDC(0.98, 0.94, "95% CL");
+
+  TText zstdAnnot;
+  zstdAnnot.SetTextSize(0.035);
+  zstdAnnot.SetTextAlign(33);
+  zstdAnnot.SetTextFont(42);
+  zstdAnnot.DrawTextNDC(0.98, 0.035, "*current ATLAS default");
+
+  TLatex title;
+  title.SetTextSize(0.045);
+  title.SetTextAlign(23);
+  title.SetTextFont(42);
+  if (physFileType == "mc")
+    title.DrawLatexNDC(0.55, 0.99, Form("%s event throughput, MC", std::string(medium).c_str()));
+  else
+    title.DrawLatexNDC(0.55, 0.99, Form("%s event throughput, data", std::string(medium).c_str()));
 
   //--------------------------------------------------------------------------//
   // SAVE THE PLOT                                                            //
   //--------------------------------------------------------------------------//
-
   if (save) {
     canvas->Print(Form("figures/chep_proc/readspeed_event_throughput_%s_%s.pdf",
                        std::string(medium).c_str(),
@@ -173,7 +195,6 @@ void drawByteThroughput(std::map<std::string, ReadSpeedData> &readSpeedData,
   //--------------------------------------------------------------------------//
   // SET UP THE CANVAS                                                        //
   //--------------------------------------------------------------------------//
-
   TCanvas *canvas = new TCanvas(
       Form("canvas_byte_throughput_%s", std::string(medium).c_str()),
       Form("canvas_byte_throughput_%s", std::string(medium).c_str()), 600, 800);
@@ -182,10 +203,13 @@ void drawByteThroughput(std::map<std::string, ReadSpeedData> &readSpeedData,
 
   // TTree vs RNTuple read throughput speed
   auto pad = new TPad("pad", "pad", 0.0, 0.0, 1.0, 1.0);
-  pad->SetTopMargin(0.055);
-  pad->SetBottomMargin(0.09);
+  pad->SetTopMargin(0.1);
+  pad->SetBottomMargin(0.18);
   pad->SetLeftMargin(0.15);
-  pad->SetRightMargin(0.02);
+  if (maxThroughput < 1000) {
+    pad->SetLeftMargin(0.18);
+  }
+  pad->SetRightMargin(0.1);
   pad->SetFillStyle(4000);
   pad->SetFrameFillStyle(4000);
   pad->Draw();
@@ -209,6 +233,9 @@ void drawByteThroughput(std::map<std::string, ReadSpeedData> &readSpeedData,
   helper->GetYaxis()->SetTitle("MB / s");
   helper->GetYaxis()->SetTitleSize(0.06);
   helper->GetYaxis()->SetTitleOffset(1.2);
+   if (maxThroughput < 1000) {
+    helper->GetYaxis()->SetTitleOffset(1.5);
+  }
   helper->SetMinimum(0);
   helper->SetMaximum(maxThroughput);
 
@@ -262,20 +289,34 @@ void drawByteThroughput(std::map<std::string, ReadSpeedData> &readSpeedData,
         tlabel.SetTextSize(0.05);
       else
         tlabel.SetTextSize(0.06);
-      tlabel.SetTextAlign(22);
+      tlabel.SetTextAlign(23);
       if (format == "ttree")
-        tlabel.DrawLatex(x, maxThroughput * -0.04, "TTree");
+        tlabel.DrawLatex(x, maxThroughput * -0.03, "TTree");
       else if (format == "rntuple")
-        tlabel.DrawLatex(x, maxThroughput * -0.045, "RNTuple");
+        tlabel.DrawLatex(x, maxThroughput * -0.03, "RNTuple");
       else
         tlabel.DrawLatex(x, maxThroughput * -0.0605, "#splitline{RNTuple}{#scale[0.7]{(w/ io_uring)}}");
     }
   }
 
+  TText l;
+  l.SetTextSize(0.045);
+  l.SetTextAlign(13);
+  l.SetTextFont(42);
+  l.DrawTextNDC(0.75, 0.94, "95% CL");
+
+  TLatex title;
+  title.SetTextSize(0.06);
+  title.SetTextAlign(23);
+  title.SetTextFont(42);
+  if (physFileType == "mc")
+    title.DrawLatexNDC(0.525, 0.99, Form("%s raw I/O throughput, MC", std::string(medium).c_str()));
+  else
+    title.DrawLatexNDC(0.525, 0.99, Form("%s raw I/O throughput, data", std::string(medium).c_str()));
+
   //--------------------------------------------------------------------------//
   // SAVE THE PLOT                                                            //
   //--------------------------------------------------------------------------//
-
   if (save) {
     canvas->Print(Form("figures/chep_proc/readspeed_byte_throughput_%s_%s.pdf",
                        std::string(medium).c_str(),
@@ -305,7 +346,7 @@ void plot(std::string_view resultsPathBase, std::string_view medium,
   for (const std::string format : formats) {
     std::vector<float> byteReadRates;
 
-    for (const int compression : {/*0,*/ 505, 404, 201, 207}) {
+    for (const int compression : {404, 505, 201, 207}) {
       std::string resultsFilePath = std::string(resultsPathBase) + "/" +
                                     format + "/readspeed_" +
                                     std::string(physFileType) + "_" +
@@ -405,7 +446,7 @@ void plot(std::string_view resultsPathBase, std::string_view medium,
 
   float maxByteThroughput = 0.;
   for (const auto &[format, data] : byteThroughputData) {
-    float x = getXVal(format, 505, withUring);
+    float x = getXVal(format, 404, withUring);
 
     auto gByte = data.throughputGraph;
     gByte->SetPoint(0, x + 0, data.throughputMean);
@@ -424,8 +465,13 @@ void plot(std::string_view resultsPathBase, std::string_view medium,
 void plot_overview_per_medium() {
   SetStyle();
 
-  // plot("results/chep-proc/ssd", "SSD", "data", true, true);
-  // plot("results/chep-proc/hdd", "HDD", "data", true, true);
-  // plot("results/chep-proc/xrootd", "XRootD", "data", false, true);
-  plot("results/chep-proc/tmpfs", "tmpfs", "data", false, true);
+  plot("results/ssd", "SSD", "mc", true, true);
+  plot("results/hdd", "HDD", "mc", true, true);
+  plot("results/xrootd", "XRootD", "mc", false, true);
+  plot("results/tmpfs", "tmpfs", "mc", false, true);
+
+  plot("results/ssd", "SSD", "data", true, true);
+  plot("results/hdd", "HDD", "data", true, true);
+  plot("results/xrootd", "XRootD", "data", false, true);
+  plot("results/tmpfs", "tmpfs", "data", false, true);
 }

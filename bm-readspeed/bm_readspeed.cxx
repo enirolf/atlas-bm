@@ -47,7 +47,7 @@ static void showHist(TH1D *hist) {
   return;
 }
 
-void bmRDFReadspeed(ROOT::RDataFrame &rdf, bool isNTuple) {
+void bmRDFReadspeed(ROOT::RDataFrame &rdf, bool isRNTuple) {
   const std::array<std::string_view, 8> containers = {"Electrons",
                                                       "Photons",
                                                       "TauJets",
@@ -56,7 +56,7 @@ void bmRDFReadspeed(ROOT::RDataFrame &rdf, bool isNTuple) {
                                                       "DiTauJetsLowPt",
                                                       "TauNeutralParticleFlowObjects",
                                                       "TauNeutralParticleFlowObjects_MuonRM"};
-  const std::string sep = isNTuple ? "_" : ".";
+  const std::string sep = isRNTuple ? "_" : ".";
 
   // Need to get access to the RInterface object.
   auto rdfEL = rdf.Define("NOOP", []() { return true; });
@@ -75,12 +75,13 @@ void bmRDFReadspeed(ROOT::RDataFrame &rdf, bool isNTuple) {
 }
 
 static void printUsage(std::string_view prog) {
-  std::cout << prog << " [-v -h] -i INPUT_PATH -n STORE_NAME -s (ttree|rntuple)" << std::endl;
+  std::cout << prog << " (-h|-i INPUT_PATH -s (ttree|rntuple) [-n STORE_NAME])" << std::endl;
 }
 
 int main(int argc, char **argv) {
-  std::string inputPath, storeName;
-  bool isNTuple = false;
+  std::string inputPath;
+  std::string storeName = "CollectionTree";
+  bool isRNTuple = false;
 
   int c;
   while ((c = getopt(argc, argv, "hi:n:s:")) != -1) {
@@ -96,7 +97,7 @@ int main(int argc, char **argv) {
       break;
     case 's':
       if (strcmp(optarg, "rntuple") == 0) {
-        isNTuple = true;
+        isRNTuple = true;
       } else if (strcmp(optarg, "ttree") != 0) {
         std::cerr << "Unknown mode: " << optarg << std::endl;
         return 1;
@@ -123,15 +124,15 @@ int main(int argc, char **argv) {
   auto verbosity = ROOT::Experimental::RLogScopedVerbosity(ROOT::Detail::RDF::RDFLogChannel(),
                                                            ROOT::Experimental::ELogLevel::kInfo);
 
-  if (isNTuple) {
+  if (isRNTuple) {
     ROOT::RDataFrame rdf = ROOT::RDF::Experimental::FromRNTuple(storeName, inputPath);
-    bmRDFReadspeed(rdf, isNTuple);
+    bmRDFReadspeed(rdf, isRNTuple);
   } else {
     auto file = TFile::Open(inputPath.c_str());
     auto tree = file->Get<TTree>(storeName.c_str());
     auto treeStats = new TTreePerfStats("ioperf", tree);
     ROOT::RDataFrame rdf(*tree);
-    bmRDFReadspeed(rdf, isNTuple);
+    bmRDFReadspeed(rdf, isRNTuple);
     treeStats->Print();
   }
 

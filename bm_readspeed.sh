@@ -10,6 +10,10 @@ function bm_readspeed() {
   storage_type=$1
   results_dir=$2/$storage_type
 
+  if [ "$storage_type" = "tmpfs" ]; then
+    COLD_CACHE=false
+  fi
+
   if [ "$(root-config --has-uring)" = "yes" ]; then
     results_dir=${results_dir}_uring
   fi
@@ -32,7 +36,7 @@ function bm_readspeed() {
           continue
         fi
 
-        results=$(bin/bm_readspeed -i $source_file -n CollectionTree -s $storage_type 2>&1)
+        results=$(bin/bm_readspeed -i $source_file -s $storage_type 2>&1)
         echo "$results" >> $results_file
       done
     done

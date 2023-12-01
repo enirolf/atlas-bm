@@ -1,6 +1,7 @@
 #include "../bm-utils/plot_util.C"
 
 #include <cmath>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -23,24 +24,23 @@ struct ReadSpeedData {
   float byteSpeedupMean, byteSpeedupErr;
 };
 
-void drawGraph(std::map<int, std::map<std::string, TGraphErrors *>> &graphs, float maxThrougput,
-               std::string_view plotKind, bool save = false) {
+void drawGraph(std::map<int, std::map<std::string, TGraphErrors *>> &graphs, float maxThroughput,
+               std::string_view plotKind, std::string_view physFileType, bool save = false) {
   //--------------------------------------------------------------------------//
   // SET UP THE CANVAS                                                        //
   //--------------------------------------------------------------------------//
-
   TCanvas *canvas =
-      new TCanvas(Form("canvas_througput_%s", std::string(plotKind).c_str()),
-                  Form("canvas_througput_%s", std::string(plotKind).c_str()), 1200, 1000);
+      new TCanvas(Form("canvas_througput_%s_%s", std::string(plotKind).c_str(), std::string(physFileType).c_str()),
+                  Form("canvas_througput_%s_%s", std::string(plotKind).c_str(), std::string(physFileType).c_str()), 1200, 500);
   canvas->SetFillStyle(4000);
   canvas->cd();
 
   // TTree vs RNTuple read throughput speed
   auto pad = new TPad("pad", "pad", 0.0, 0.0, 1.0, 1.0);
-  pad->SetTopMargin(0.055);
-  pad->SetBottomMargin(0.08);
-  pad->SetLeftMargin(0.12);
-  pad->SetRightMargin(0.02);
+  pad->SetTopMargin(0.085);
+  pad->SetBottomMargin(0.18);
+  pad->SetLeftMargin(0.06);
+  pad->SetRightMargin(0.005);
   pad->SetFillStyle(4000);
   pad->SetFrameFillStyle(4000);
   pad->SetFillStyle(4000);
@@ -48,34 +48,36 @@ void drawGraph(std::map<int, std::map<std::string, TGraphErrors *>> &graphs, flo
   canvas->cd();
 
   int nBins = 20;
-  int binStart = 8;
+  int binStart = 6;
   int binInterval = 10;
 
   //--------------------------------------------------------------------------//
   // DRAW THE GRAPH                                                           //
   //--------------------------------------------------------------------------//
-
-  maxThrougput *= 1.1;
+  maxThroughput *= 1.1;
 
   TH1F *helper = new TH1F("", "", nBins, 0, nBins);
+  helper->GetXaxis()->SetTitle("Compression method");
+  helper->GetXaxis()->SetTitleSize(0.05);
+  helper->GetXaxis()->SetTitleOffset(1.45);
   helper->GetXaxis()->SetTickSize(0);
   helper->GetXaxis()->SetNdivisions(nBins * 2);
-  helper->GetXaxis()->SetLabelOffset(0.02);
+  helper->GetXaxis()->SetLabelOffset(0.03);
   helper->GetYaxis()->SetTickSize(0.01);
   helper->GetYaxis()->SetLabelSize(0.045);
   helper->GetYaxis()->SetTitle("Throughput ratio (RNTuple / TTree)");
   helper->GetYaxis()->SetTitleSize(0.05);
-  helper->GetYaxis()->SetTitleOffset(1.0);
+  helper->GetYaxis()->SetTitleOffset(0.5);
   helper->SetMinimum(0);
-  helper->SetMaximum(maxThrougput);
+  helper->SetMaximum(maxThroughput);
 
   float labelSize = 0.05;
 
   for (int i = 0; i <= nBins * 2 + 1; i++) {
     if (i == binStart) {
-      helper->GetXaxis()->ChangeLabel(i, -1, labelSize, 21, -1, -1, "zstd");
-    } else if (i == binStart + binInterval) {
       helper->GetXaxis()->ChangeLabel(i, -1, labelSize, 21, -1, -1, "lz4");
+    } else if (i == binStart + binInterval) {
+      helper->GetXaxis()->ChangeLabel(i, -1, labelSize, 21, -1, -1, "zstd*");
     } else if (i == binStart + (2 * binInterval)) {
       helper->GetXaxis()->ChangeLabel(i, -1, labelSize, 21, -1, -1, "lzma (lvl 1)");
     } else if (i == binStart + (3 * binInterval)) {
@@ -112,49 +114,67 @@ void drawGraph(std::map<int, std::map<std::string, TGraphErrors *>> &graphs, flo
         val << "#times" << std::fixed << y;
 
         TLatex tval;
-        tval.SetTextColor(kWhite);
-        tval.SetTextSize(0.03);
+        tval.SetTextSize(0.05);
         tval.SetTextAlign(21);
-        tval.DrawLatex(x, maxThrougput * 0.025, val.str().c_str());
+        if (y < 0.7) {
+          tval.SetTextColor(kBlack);
+          tval.DrawLatex(x, maxThroughput * 0.11, val.str().c_str());
+        } else {
+          tval.SetTextColor(kWhite);
+          tval.DrawLatex(x, maxThroughput * 0.025, val.str().c_str());
+        }
       }
     }
   }
 
   for (unsigned i = 0; i < nBins; i += (binInterval / 2)) {
-    TLine *line = new TLine(i, 0, i, maxThrougput);
+    TLine *line = new TLine(i, 0, i, maxThroughput);
     line->SetLineColor(kBlack);
     line->SetLineStyle(3);
     line->SetLineWidth(1);
     line->Draw();
   }
 
-  TLegend *leg = new TLegend(0.65, 0.765, 0.975, 0.935);
+  TLegend *leg = new TLegend(0.8, 0.7, 0.985, 0.9);
   leg->AddEntry(graphs[505]["ssd"], "SSD", "F");
   leg->AddEntry(graphs[505]["hdd"], "HDD", "F");
   leg->AddEntry(graphs[505]["tmpfs"], "RAM", "F");
   leg->AddEntry(graphs[505]["xrootd"], "XRootD (100GbE, 0.3ms)", "F");
   leg->SetNColumns(1);
-  // leg->SetMargin(0.15);
   leg->Draw();
 
-  TText l;
-  l.SetTextSize(0.025);
-  l.SetTextAlign(13);
-  l.DrawTextNDC(0.9, 0.75, "95% CL");
+  TText clAnnot;
+  clAnnot.SetTextSize(0.04);
+  clAnnot.SetTextAlign(33);
+  clAnnot.SetTextFont(42);
+  clAnnot.DrawTextNDC(0.995, 0.96, "95% CL");
 
-  TLine *lineOne = new TLine(0, 1, 15, 1);
+  TText zstdAnnot;
+  zstdAnnot.SetTextSize(0.035);
+  zstdAnnot.SetTextAlign(33);
+  zstdAnnot.SetTextFont(42);
+  zstdAnnot.DrawTextNDC(0.995, 0.035, "*current ATLAS default");
+
+  TLine *lineOne = new TLine(0, 1, 20, 1);
   lineOne->SetLineColor(kBlack);
   lineOne->SetLineStyle(7);
-  lineOne->SetLineWidth(2);
+  lineOne->SetLineWidth(1);
   lineOne->Draw();
+
+  TLatex title;
+  title.SetTextSize(0.05);
+  title.SetTextAlign(23);
+  title.SetTextFont(42);
+  if (physFileType == "mc")
+    title.DrawLatexNDC(0.5, 0.975, "DAOD_PHYS event throughput ratio of RNTuple wrt. TTree, MC");
+  else
+    title.DrawLatexNDC(0.5, 0.975, "DAOD_PHYS event throughput ratio of RNTuple wrt. TTree, data");
 
   //--------------------------------------------------------------------------//
   // SAVE THE PLOT                                                            //
   //--------------------------------------------------------------------------//
-
   if (save) {
-    canvas->Print(Form("figures/readspeed_throughput_ratio_%s.pdf", std::string(plotKind).c_str()));
-    canvas->Print(Form("figures/readspeed_throughput_ratio_%s.png", std::string(plotKind).c_str()));
+    canvas->Print(Form("figures/chep_proc/readspeed_throughput_ratio_%s_%s.pdf", std::string(plotKind).c_str(), std::string(physFileType).c_str()));
   }
 }
 
@@ -174,7 +194,7 @@ void plot(std::string_view resultsPathBase, std::string_view physFileType = "dat
 
   auto media = std::vector<std::string>{"ssd", "hdd", "tmpfs", "xrootd"};
 
-  for (const int compression : {505, 404, 201, 207}) {
+  for (const int compression : {404, 505, 201, 207}) {
     for (const auto medium : media) {
       std::string ttreeResultsFilePath = std::string(resultsPathBase) + "/" + medium +
                                          "/ttree/readspeed_" + std::string(physFileType) + "_" +
@@ -278,10 +298,10 @@ void plot(std::string_view resultsPathBase, std::string_view physFileType = "dat
         x = 4;
 
       switch (compression) {
-      case 505:
+      case 404:
         x += 0;
         break;
-      case 404:
+      case 505:
         x += 5;
         break;
       case 201:
@@ -310,12 +330,12 @@ void plot(std::string_view resultsPathBase, std::string_view physFileType = "dat
     }
   }
 
-  drawGraph(eventSpeedupGraphs, maxEventSpeedup, "event", save);
-  drawGraph(byteSpeedupGraphs, maxByteSpeedup * 1.1, "byte", save);
+  drawGraph(eventSpeedupGraphs, maxEventSpeedup, "event", physFileType, save);
 }
 
 void plot_throughput_ratio() {
   SetStyle();
 
-  plot("results/chep-proc", "data", false);
+  plot("results", "data", true);
+  plot("results", "mc", true);
 }
