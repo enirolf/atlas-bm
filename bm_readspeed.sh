@@ -46,14 +46,11 @@ function bm_readspeed() {
 function main() {
   bm_readspeed ttree $1
   bm_readspeed rntuple $1
+  python bm-readspeed/extract_metrics.py $1
 }
 
 
-SOURCE_DIR=$1
-if [ -z "$SOURCE_DIR" ]; then
-  echo "Please specify the source directory of the benchmark data"
-  exit 1
-fi
+SOURCE_DIR=${1:-data/}
 
 # Get the number of repetitions from the command line or use the default value (10)
 N_REPETITIONS=${2:-10}
